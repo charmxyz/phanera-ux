@@ -1,8 +1,5 @@
 import Link from "next/link";
-import {
-  CheckIcon, FileSearchIcon, GlobeIcon, LayoutListIcon, MousePointerClickIcon, NetworkIcon,
-  ScanTextIcon, BotIcon, CodeXmlIcon, CompassIcon,
-} from "lucide-react";
+import { CheckIcon, FileSearchIcon, GlobeIcon, NetworkIcon, ScanTextIcon, CodeXmlIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,8 +7,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { buttonVariants } from "@/components/ui/button";
 import { AntAvatar } from "@/components/ants/pixel-ant";
 import { AntMarch } from "./ants/ant-march";
+import { ColonyFlow } from "./flow/colony-flow";
 import { HeroFlower } from "./flower/hero-flower";
-import { SeverityBadge } from "@/components/findings/severity-badge";
 import { ExploreForm } from "./explore-form";
 import { cn } from "@/lib/utils";
 
@@ -36,15 +33,14 @@ export function Hero() {
       />
       <div className="container-marketing relative z-10 pt-12 pb-0 sm:pt-24 lg:py-28">
         <div className="max-w-[540px]">
-          <p className="mb-6 font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">AI persona testing</p>
           <h1 className="text-[2.6rem] leading-[1.02] font-medium tracking-[-0.035em] text-balance sm:text-6xl lg:text-[4.5rem]">
-            See your website through every perspective.
+            Find where visitors get stuck.
           </h1>
           <p className="mt-6 max-w-[440px] text-pretty text-muted-foreground sm:text-lg">
-            Send autonomous AI personas to explore your website, discover friction, and reveal what humans and AI agents might miss.
+            Phanera sends simulated visitors through your website, then shows you what confused them and how to fix it.
           </p>
           <ExploreForm className="mt-9 max-w-lg" id="hero-url" />
-          <p className="mt-3 text-xs text-muted-foreground">Free plan includes 5 test runs. Nothing runs until you confirm.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Free for your first 5 tests. No card needed.</p>
         </div>
       </div>
       <div className="relative -mt-8 h-[52vh] min-h-[340px] w-full lg:absolute lg:mt-0 lg:inset-y-0 lg:right-0 lg:h-auto lg:w-[64%]">
@@ -57,81 +53,48 @@ export function Hero() {
 }
 
 /* --------------------------------------------------------- How it works */
+const STEPS = [
+  { n: "1", t: "Ask a question", d: "“Can a new visitor find pricing?” Paste your URL and pick the question." },
+  { n: "2", t: "Visitors try it", d: "Each persona browses your live site in a real browser, its own way." },
+  { n: "3", t: "Get a fix list", d: "Ranked issues, each with screenshots and a suggested fix." },
+];
+
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="scroll-mt-16 py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="How it works" title="One website. Many perspectives.">
-          Phanera explores your website through different personas, then brings their experiences together into one clear report.
+        <SectionHeading eyebrow="How it works" title="From URL to fix list in minutes.">
+          No recruiting, no scheduling, no waiting on a research report.
         </SectionHeading>
-        <div className="grid gap-4 md:grid-cols-3">
-          <StepCard n={1} title="Discover your website" body="Phanera maps your pages, understands your product, and identifies what visitors are likely trying to accomplish.">
-            <div className="grid gap-1.5 font-mono text-xs">
-              {[["/", "home"], ["/pricing", "pricing"], ["/features", "product"], ["/docs", "docs"], ["/about", "about"]].map(([p, t], i) => (
-                <div key={p} className="flex items-center justify-between rounded-md border border-border bg-background px-2.5 py-1.5" style={{ opacity: 1 - i * 0.12 }}>
-                  <span>{p}</span>
-                  <span className="text-muted-foreground">{t}</span>
-                </div>
-              ))}
-            </div>
-          </StepCard>
-          <StepCard n={2} title="Release the colony" body="AI personas independently navigate your website, attempt tasks, and record what happens.">
-            <div className="grid gap-2">
-              {[["Alex", 100, "done"], ["Sam", 62, "active"], ["Morgan", 35, "active"]].map(([name, v, s]) => (
-                <div key={name as string} className="flex items-center gap-3 rounded-md border border-border bg-background px-2.5 py-2">
-                  <AntAvatar seed={name as string} size={24} state={s as "done" | "active"} />
-                  <div className="grid flex-1 gap-1.5">
-                    <div className="flex justify-between text-xs"><span>{name}</span><span className="text-muted-foreground">{s === "done" ? "Completed" : "Exploring"}</span></div>
-                    <Progress value={v as number} className="h-1" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </StepCard>
-          <StepCard n={3} title="Reveal the findings" body="See where agents succeeded, what blocked them, and which issues deserve attention.">
-            <div className="grid gap-1.5">
-              {([["high", "Pricing is two clicks deep"], ["medium", "Mixed feature names"], ["low", "Low-contrast CTA on mobile"]] as const).map(([s, t]) => (
-                <div key={t} className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs">
-                  <SeverityBadge severity={s} />
-                  <span className="truncate">{t}</span>
-                  <span className="ml-auto font-mono text-muted-foreground">step 3</span>
-                </div>
-              ))}
-            </div>
-          </StepCard>
-        </div>
+        <ColonyFlow className="mx-auto aspect-[16/8] w-full max-w-5xl max-sm:aspect-[4/3]" />
+        <ol className="mx-auto mt-6 grid max-w-5xl gap-6 sm:grid-cols-3">
+          {STEPS.map((step) => (
+            <li key={step.n} className="grid gap-1.5">
+              <span className="flex size-6 items-center justify-center rounded-full border border-border font-mono text-xs">{step.n}</span>
+              <p className="font-medium">{step.t}</p>
+              <p className="text-sm text-pretty text-muted-foreground">{step.d}</p>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
 }
 
-function StepCard({ n, title, body, children }: { n: number; title: string; body: string; children: React.ReactNode }) {
-  return (
-    <Card className="gap-5">
-      <CardHeader>
-        <p className="font-mono text-xs text-muted-foreground">0{n}</p>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>{body}</CardDescription>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
 /* ------------------------------------------------------------- Personas */
 const EXAMPLE_PERSONAS = [
-  { name: "Alex", role: "First-time visitor", goal: "Understand what the product does.", behaviour: "Skims content and expects simple explanations.", icon: CompassIcon },
-  { name: "Sam", role: "Potential customer", goal: "Compare plans and find pricing.", behaviour: "Detail-oriented and price-conscious.", icon: LayoutListIcon },
-  { name: "Taylor", role: "Technical evaluator", goal: "Identify integrations and technical requirements.", behaviour: "Searches for documentation and precise information.", icon: CodeXmlIcon },
-  { name: "Morgan", role: "AI assistant", goal: "Extract reliable product information.", behaviour: "Prioritises structured, accessible and consistent content.", icon: BotIcon },
+  { name: "Alex", role: "First-time visitor", goal: "Heard about you once. Wants to know what you do, fast.", behaviour: "Skims headings", trait: "Impatient" },
+  { name: "Sam", role: "Budget owner", goal: "Needs a price to take to the boss.", behaviour: "Reads the fine print", trait: "Skeptical" },
+  { name: "Taylor", role: "Technical evaluator", goal: "Checking it works with their stack.", behaviour: "Goes straight to docs", trait: "Thorough" },
+  { name: "Morgan", role: "AI assistant", goal: "Answering a user's question about you.", behaviour: "Reads structure, not visuals", trait: "Literal" },
 ];
 
 export function Personas() {
   return (
     <section id="product" className="scroll-mt-16 py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="AI personas" title="Different visitors. Different experiences.">
-          Not everyone explores a website the same way. Phanera generates personas with different goals, behaviours, and levels of familiarity.
+        <SectionHeading eyebrow="Personas" title="Visitors who behave like people.">
+          Each one has a reason to visit and a way of browsing. Some skim. Some read everything. Some give up after two wrong clicks.
         </SectionHeading>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {EXAMPLE_PERSONAS.map((p) => (
@@ -144,13 +107,16 @@ export function Personas() {
                 </div>
               </CardHeader>
               <CardContent className="grid gap-3 text-sm">
-                <div><p className="text-xs text-muted-foreground">Goal</p><p>{p.goal}</p></div>
-                <div><p className="text-xs text-muted-foreground">Behaviour</p><p>{p.behaviour}</p></div>
+                <p className="text-pretty">{p.goal}</p>
+                <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                  <span className="rounded-md border border-border px-2 py-0.5">{p.behaviour}</span>
+                  <span className="rounded-md border border-border px-2 py-0.5">{p.trait}</span>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
-        <p className="mt-6 text-center text-xs text-muted-foreground">Example personas. Personas are simulated by AI agents, not real people.</p>
+        <p className="mt-6 text-center text-xs text-muted-foreground">Phanera suggests personas for your site. Edit them or write your own. They&apos;re simulated, not real people.</p>
       </div>
     </section>
   );
@@ -169,8 +135,8 @@ export function SessionEvidence() {
   return (
     <section className="py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="Session evidence" title="See where they get stuck.">
-          Follow each persona&apos;s journey through your website, including the pages they visited, actions they took, and problems they encountered.
+        <SectionHeading eyebrow="Replays" title="Watch every visit.">
+          Step through each persona&apos;s visit with screenshots and what they were thinking at every click.
         </SectionHeading>
         <Card className="overflow-hidden p-0">
           <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
@@ -227,35 +193,37 @@ export function SessionEvidence() {
 }
 
 /* --------------------------------------------------------------- Findings */
+const BOARD = [
+  { label: "Low", dot: "bg-muted-foreground/50", items: [{ t: "Feature names change between pages", p: ["Alex"] }] },
+  { label: "Medium", dot: "bg-warning", items: [{ t: "Main button is hard to spot on mobile", p: ["Alex", "Sam"] }, { t: "No proof or customer logos near pricing", p: ["Sam"] }] },
+  { label: "High", dot: "bg-destructive", items: [{ t: "Pricing is two clicks deep", p: ["Sam", "Morgan"] }] },
+];
+
 export function Findings() {
-  const items = [
-    { s: "high" as const, t: "Pricing page is difficult to discover.", p: ["Sam", "Morgan"], fix: "Add “Pricing” to the primary navigation." },
-    { s: "medium" as const, t: "Product features use inconsistent terminology.", p: ["Alex", "Taylor"], fix: "Use one name per feature across pages." },
-    { s: "low" as const, t: "Primary action is less prominent on mobile.", p: ["Alex"], fix: "Increase contrast and size of the mobile CTA." },
-  ];
   return (
     <section className="py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="Findings" title="Findings you can actually fix.">
-          Turn agent sessions into clear, prioritised recommendations backed by evidence.
+        <SectionHeading eyebrow="Findings" title="A fix list, not a pile of recordings.">
+          Every issue is ranked by urgency, backed by screenshots, and comes with a suggested fix.
         </SectionHeading>
-        <div className="mx-auto grid max-w-3xl gap-3">
-          {items.map((f) => (
-            <Card key={f.t} size="sm">
-              <CardContent className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2"><SeverityBadge severity={f.s} /><span className="font-medium">{f.t}</span></div>
-                  <p className="text-sm text-muted-foreground"><span className="text-foreground/80">Suggested: </span>{f.fix}</p>
+        <div className="mx-auto grid max-w-5xl gap-3 md:grid-cols-3">
+          {BOARD.map((col) => (
+            <div key={col.label} className="flex flex-col gap-2.5 rounded-2xl bg-card/70 p-3 ring-1 ring-foreground/5">
+              <div className="flex items-center gap-2 px-1 text-sm">
+                <span className={cn("size-2 rounded-full", col.dot)} />
+                <span className="font-medium">{col.label}</span>
+                <span className="text-xs text-muted-foreground">{col.items.length}</span>
+              </div>
+              {col.items.map((f) => (
+                <div key={f.t} className="grid gap-2.5 rounded-xl border border-border bg-card p-3.5 shadow-xs">
+                  <p className="text-sm leading-snug font-medium">{f.t}</p>
+                  <div className="flex items-center gap-1.5">
+                    {f.p.map((n) => <AntAvatar key={n} seed={n} size={18} />)}
+                    <span className="text-xs text-muted-foreground">{f.p.join(", ")}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 sm:justify-end">
-                  {f.p.map((n) => (
-                    <span key={n} className="inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
-                      <AntAvatar seed={n} size={14} />{n}
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           ))}
         </div>
       </div>
@@ -266,22 +234,20 @@ export function Findings() {
 /* --------------------------------------------------------- Agent readiness */
 export function AgentReadiness() {
   const items = [
-    { icon: FileSearchIcon, t: "Content discovery", d: "Robots, sitemaps and llms.txt — can agents find your important pages?" },
-    { icon: CodeXmlIcon, t: "Semantic HTML", d: "Landmarks, headings and labels that give machines a reliable structure." },
-    { icon: NetworkIcon, t: "Navigation accessibility", d: "Links and controls an agent can identify and operate without guessing." },
-    { icon: ScanTextIcon, t: "Product comprehension", d: "Whether an agent comes away with an accurate picture of what you offer." },
-    { icon: MousePointerClickIcon, t: "Agent interaction", d: "Real attempts to complete tasks, recorded step by step." },
+    { icon: FileSearchIcon, t: "Can they find your pages?", d: "Sitemaps, robots rules and llms.txt." },
+    { icon: CodeXmlIcon, t: "Can they read them?", d: "Headings, landmarks and labels." },
+    { icon: NetworkIcon, t: "Can they get around?", d: "Links and buttons they can use without guessing." },
+    { icon: ScanTextIcon, t: "Do they get you right?", d: "Whether they describe your product accurately." },
   ];
   return (
     <section className="py-24">
       <div className="container-marketing grid items-center gap-12 lg:grid-cols-2">
         <div>
           <p className="mb-4 font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">Agent readiness</p>
-          <h2 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">Built for people. Ready for agents.</h2>
+          <h2 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">Ready for AI assistants too.</h2>
           <p className="mt-4 text-pretty text-muted-foreground sm:text-lg">
-            Your website is increasingly explored by autonomous AI systems. Phanera checks whether agents can discover your pages, interpret your content, and navigate important interactions.
+            More buyers now ask ChatGPT and other assistants about products. Phanera checks whether those assistants can find, read and use your pages.
           </p>
-          <p className="mt-4 text-sm text-muted-foreground">Measured signals are reported separately from AI interpretation, so you always know what was observed.</p>
         </div>
         <div className="grid gap-2">
           {items.map((i) => (
@@ -347,12 +313,12 @@ export function Pricing({ heading = true }: { heading?: boolean }) {
 
 /* -------------------------------------------------------------------- FAQ */
 const FAQS = [
-  ["What is Phanera?", "Phanera sends AI personas to explore your public website in real browsers. Each persona attempts a realistic task, and Phanera turns what happened into evidence-backed findings."],
-  ["How does Phanera test my website?", "First it discovers your website: it reads permitted pages, your sitemap and navigation, and builds an understanding of your product. Then each persona browses in its own isolated browser sandbox, taking real actions and screenshots. A separate AI evaluator reviews every session before findings are written."],
-  ["Are the personas real people?", "No. Personas are simulated by AI agents. They are designed to represent different goals and behaviours, but they are not real users and the results are not user research."],
-  ["Does Phanera test whether AI can understand my website?", "Yes. Every test includes an AI assistant persona and an agent-readiness report covering content discovery, semantic structure, navigation and comprehension. Measured signals are shown separately from interpretation."],
-  ["Can I test any website?", "Any publicly reachable website. Phanera doesn't test pages behind a login, localhost or private networks, and agents never make purchases or submit forms that change data."],
-  ["How long does a test take?", "Discovery usually takes under a minute. A test with three personas typically finishes in a few minutes; you can watch progress live."],
+  ["What is Phanera?", "A quick way to see your website the way visitors do. Simulated visitors try a task on your live site in real browsers, and Phanera turns what happened into a ranked fix list."],
+  ["How does it work?", "Paste your URL and pick a question, like \u201ccan a new visitor find pricing?\u201d. Phanera reads your site, suggests personas, and sends each one through it. A separate reviewer checks every visit before writing the findings."],
+  ["Are the personas real people?", "No. They're simulated visitors with different reasons and habits. They're great for catching friction early, but they don't replace talking to customers."],
+  ["Does it check AI assistants too?", "Yes. Every test includes an AI assistant persona, plus a report on whether assistants can find, read and use your pages."],
+  ["Can I test any website?", "Any public website. Logged-in pages, localhost and private networks aren't supported, and personas never buy anything or submit forms that change data."],
+  ["How long does a test take?", "Usually a few minutes. You can watch the personas live while they work."],
   ["How much does Phanera cost?", "The Free plan includes 5 test runs with up to 3 personas each. The Startup plan is £99/month for 10 test runs a month with up to 10 personas each, paid by card or PayPal and cancellable anytime."],
 ];
 
@@ -384,8 +350,8 @@ export function FinalCTA() {
       <div aria-hidden className="fade-edge-b pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-28" />
       <div className="container-reading flex flex-col items-center text-center">
         <p className="mb-5 font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">Release the colony</p>
-        <h2 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">What would agents discover on your website?</h2>
-        <p className="mt-5 text-muted-foreground sm:text-lg">Enter your URL and see your website through a different perspective.</p>
+        <h2 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">What are your visitors running into?</h2>
+        <p className="mt-5 text-muted-foreground sm:text-lg">Paste your URL and find out in minutes.</p>
         <ExploreForm className="mt-9 max-w-xl" id="cta-url" />
         <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><GlobeIcon className="size-3" /> Public websites only</p>
       </div>

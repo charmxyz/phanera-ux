@@ -8,9 +8,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Phanera — See your website through every perspective", template: "%s · Phanera" },
+  title: { default: "Phanera — Find where visitors get stuck", template: "%s · Phanera" },
   description:
-    "Send autonomous AI personas to explore your website, discover friction, and reveal what humans and AI agents might miss.",
+    "Phanera sends simulated visitors through your website, then shows you what confused them and how to fix it.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

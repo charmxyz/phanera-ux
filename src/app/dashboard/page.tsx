@@ -32,7 +32,7 @@ export default async function DashboardPage() {
       />
 
       {!websites?.length ? (
-        <EmptyState title="Start with your website." description="Enter a URL to discover how AI personas experience your product." seed={user.id}>
+        <EmptyState title="Start with your website." description="Paste a URL to see where visitors get stuck." seed={user.id}>
           <DiscoveryUrlForm autoFocus />
         </EmptyState>
       ) : (

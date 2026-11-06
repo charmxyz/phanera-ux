@@ -9,7 +9,7 @@ export function SiteFooter() {
       <div className="container-marketing flex flex-col gap-6 pt-14 sm:flex-row sm:items-start sm:justify-between">
         <div className="grid gap-2">
           <Logo />
-          <p className="text-sm text-muted-foreground">See your website through every perspective.</p>
+          <p className="text-sm text-muted-foreground">Find where visitors get stuck.</p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground" aria-label="Footer">
           <Link href="/#product" className="hover:text-foreground">Product</Link>

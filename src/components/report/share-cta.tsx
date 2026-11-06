@@ -11,7 +11,7 @@ export function ShareCTA() {
       <div className="container-reading flex flex-col items-center text-center">
         <p className="mb-5 font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">Like what you&apos;re seeing?</p>
         <h2 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">Send the colony to your own website.</h2>
-        <p className="mt-5 text-muted-foreground sm:text-lg">AI personas explore your site in real browsers and report exactly where they got stuck.</p>
+        <p className="mt-5 text-muted-foreground sm:text-lg">Simulated visitors try your site in real browsers and show you exactly where they got stuck.</p>
         <ExploreForm className="mt-9 max-w-xl" id="share-cta-url" />
         <p className="mt-3 text-xs text-muted-foreground">Free plan includes 5 test runs. No card needed.</p>
       </div>

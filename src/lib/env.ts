@@ -5,7 +5,9 @@ import "server-only";
  * the `server-only` import makes that a build error.
  */
 function optional(name: string): string | undefined {
-  const v = process.env[name];
+  let v = process.env[name]?.trim();
+  // Forgive a whole "NAME=value" line pasted into a dashboard's value field.
+  if (v?.startsWith(`${name}=`)) v = v.slice(name.length + 1).trim();
   return v && v.length > 0 ? v : undefined;
 }
 

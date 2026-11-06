@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { crawlWebsite, measureReadiness } from "./crawl";
 import { generateStructured } from "@/lib/claude/client";
 import { websiteSummaryPrompt, personaPrompt } from "@/lib/claude/prompts";
-import { WebsiteAnalysisSchema, PersonaSuggestionsSchema } from "@/lib/claude/schemas";
+import { WebsiteAnalysisSchema, PersonaSuggestionsSchema, desktopUnlessAsked } from "@/lib/claude/schemas";
 import { BILLING_COLUMNS, effectivePlan, planLimits } from "@/lib/usage/plans";
 import type { DiscoveryStatus, Json } from "@/types/database";
 
@@ -81,7 +81,7 @@ export async function runDiscovery(websiteId: string) {
       description: analysis.product_description,
       summary: analysis as unknown as Json,
       suggested_goals: analysis.suggested_goals as unknown as Json,
-      suggested_personas: personas.personas as unknown as Json,
+      suggested_personas: desktopUnlessAsked(personas.personas) as unknown as Json,
       last_scanned_at: new Date().toISOString(),
     });
   } catch (err) {

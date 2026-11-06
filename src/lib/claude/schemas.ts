@@ -44,6 +44,12 @@ export type Persona = z.infer<typeof PersonaSchema>;
 
 export const PersonaSuggestionsSchema = z.object({ personas: z.array(PersonaSchema) });
 
+/** Personas use desktop unless the test goal asks about mobile. Users can still pick mobile by hand. */
+export function desktopUnlessAsked(personas: Persona[], testGoal?: string): Persona[] {
+  if (testGoal && /\b(mobile|phone|smartphone|tablet|ios|android|iphone|ipad)\b/i.test(testGoal)) return personas;
+  return personas.map((p) => ({ ...p, device: "desktop" }));
+}
+
 // ---- Browser agent step -----------------------------------------------------
 export const AgentStepSchema = z.object({
   observation: z.string().describe("What you see on the current page that matters for your goal (1-2 sentences)"),

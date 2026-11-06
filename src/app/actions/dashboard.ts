@@ -10,7 +10,7 @@ import { countScansToday, getUsageSummary } from "@/lib/usage/usage";
 import { enqueueDiscovery, enqueueTestRun } from "@/lib/jobs/dispatch";
 import { generateStructured } from "@/lib/claude/client";
 import { personaPrompt } from "@/lib/claude/prompts";
-import { PersonaSchema, PersonaSuggestionsSchema, type Persona } from "@/lib/claude/schemas";
+import { PersonaSchema, PersonaSuggestionsSchema, desktopUnlessAsked, type Persona } from "@/lib/claude/schemas";
 import type { Json } from "@/types/database";
 import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
 
@@ -73,8 +73,9 @@ export async function regeneratePersonas(websiteId: string, goal: string): Promi
       effort: "low",
       maxTokens: 8000,
     });
-    await db.from("websites").update({ suggested_personas: out.personas as unknown as Json }).eq("id", websiteId);
-    return { ok: true, personas: out.personas };
+    const personas = desktopUnlessAsked(out.personas, goal);
+    await db.from("websites").update({ suggested_personas: personas as unknown as Json }).eq("id", websiteId);
+    return { ok: true, personas };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not generate personas." };
   }

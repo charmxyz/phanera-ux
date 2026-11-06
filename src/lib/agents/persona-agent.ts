@@ -1,5 +1,5 @@
 import "server-only";
-import type { Browser, BrowserContext, Page } from "playwright-core";
+import type { Browser, BrowserContext, Locator, Page } from "playwright-core";
 import type Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateStructured } from "@/lib/claude/client";
@@ -89,6 +89,93 @@ export async function snapshot(page: Page): Promise<{ elements: Element[]; text:
     }
     return { elements: out, text: document.body.innerText.replace(/\s+/g, " ").slice(0, 3500), title: document.title };
   });
+}
+
+/** Message used when our browser automation (not the website) fails to act on an element. */
+export const TOOLING_PREFIX = "Agent tooling:";
+
+/**
+ * Finds the element the agent chose. The ref attribute can vanish if the site re-renders
+ * between our snapshot and the action (common with React and similar), so fall back to
+ * the element's role and accessible name.
+ */
+async function resolve(page: Page, el: Element): Promise<Locator | null> {
+  const byRef = page.locator(`[data-phanera-ref="${el.ref}"]`).first();
+  if (await byRef.count().catch(() => 0)) return byRef;
+  const name = el.text.slice(0, 60);
+  if (!name) return null;
+  const role = el.role || (el.tag === "a" ? "link" : el.tag === "button" || el.tag === "summary" ? "button" : "");
+  const candidates = [
+    role ? page.getByRole(role as Parameters<Page["getByRole"]>[0], { name, exact: false }) : null,
+    page.getByText(name, { exact: false }),
+  ].filter((l): l is Locator => l !== null);
+  for (const l of candidates) if (await l.first().count().catch(() => 0)) return l.first();
+  return null;
+}
+
+const pageFingerprint = (page: Page) =>
+  page.evaluate(() => `${location.href}|${document.body.innerText.length}|${document.querySelectorAll("[aria-expanded=true],[open]").length}`).catch(() => "");
+
+/** If something else sits on top of the element's centre (banner, overlay), describe it. */
+const coveredBy = (loc: Locator) =>
+  loc
+    .evaluate((n) => {
+      const r = n.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!top || n.contains(top) || top.contains(n)) return null;
+      const id = top.id ? `#${top.id}` : "";
+      const cls = typeof top.className === "string" && top.className.trim() ? `.${top.className.trim().split(/\s+/).slice(0, 2).join(".")}` : "";
+      const text = (top as HTMLElement).innerText?.replace(/\s+/g, " ").trim().slice(0, 60);
+      return `<${top.tagName.toLowerCase()}${id}${cls}>${text ? ` "${text}"` : ""}`;
+    }, undefined, { timeout: 3000 })
+    .catch(() => null);
+
+/**
+ * Clicks like a person would, but tolerant of automation quirks. A normal click first; if
+ * that fails, either another element covers the control (reported, since a person would hit
+ * the cover too) or it is still animating (forced click). A DOM click and, for links, opening
+ * the href come last. Only if all fail is it reported, and as a tooling problem.
+ * Also notes when a click "worked" but nothing on the page changed: a real UX signal.
+ */
+export async function robustClick(page: Page, el: Element): Promise<{ note: string | null }> {
+  const loc = await resolve(page, el);
+  if (!loc) throw new Error(`${TOOLING_PREFIX} the element "${el.text}" could not be found again (the page re-rendered). This is not evidence of a website problem.`);
+  await loc.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+  const before = await pageFingerprint(page);
+  const domClick = () => loc.evaluate((n) => (n as HTMLElement).click(), undefined, { timeout: 3000 });
+
+  let used: string | null = null;
+  let cover: string | null = null;
+  try {
+    await loc.click({ timeout: 4000 });
+    used = "click";
+  } catch {
+    cover = await coveredBy(loc);
+    // Covered: a forced mouse click would just hit the cover, so click the control directly.
+    const fallbacks: [string, () => Promise<unknown>][] = cover
+      ? [["DOM click", domClick]]
+      : [["forced click", () => loc.click({ timeout: 3000, force: true })], ["DOM click", domClick]];
+    for (const [label, act] of fallbacks) {
+      try {
+        await act();
+        used = label;
+        break;
+      } catch {
+        /* try the next strategy */
+      }
+    }
+  }
+  if (!used && el.href && el.href.startsWith("http")) {
+    await page.goto(el.href, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    used = "opened link";
+  }
+  if (!used) throw new Error(`${TOOLING_PREFIX} could not click "${el.text}" (automation timed out). This is not evidence of a website problem.`);
+  await page.waitForTimeout(800);
+  const after = await pageFingerprint(page);
+  const unchanged = before && after && before === after;
+  if (cover) return { note: `The control was covered by another element ${cover}; a visitor clicking it would hit that instead.${unchanged ? " Clicking it directly also changed nothing." : ""}` };
+  if (unchanged) return { note: "Clicked, but nothing on the page visibly changed." };
+  return { note: null };
 }
 
 export async function guardContext(context: BrowserContext, domain: string) {
@@ -279,24 +366,32 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
       }
 
       const el = decision.element_ref != null ? snap.elements.find((e) => e.ref === decision.element_ref) : undefined;
-      const locator = el ? page.locator(`[data-phanera-ref="${el.ref}"]`).first() : null;
+      const locate = async () => {
+        const l = el ? await resolve(page, el) : null;
+        if (!l) throw new Error(el ? `${TOOLING_PREFIX} the element "${el.text}" could not be found again. This is not evidence of a website problem.` : "No element selected");
+        return l;
+      };
       const targetDesc = el ? `${el.tag} "${el.text}"` : decision.value;
       let result = "ok";
       let error: string | null = null;
       try {
         switch (decision.action) {
-          case "click":
-            if (!locator) throw new Error("No element selected");
-            await locator.click({ timeout: 6000 });
+          case "click": {
+            if (!el) throw new Error("No element selected");
+            const { note } = await robustClick(page, el);
+            if (note) result = note;
             break;
-          case "type":
-            if (!locator) throw new Error("No element selected");
+          }
+          case "type": {
+            const locator = await locate();
             await locator.fill((decision.value ?? "").slice(0, 200), { timeout: 6000 });
             break;
-          case "select":
-            if (!locator) throw new Error("No element selected");
+          }
+          case "select": {
+            const locator = await locate();
             await locator.selectOption({ label: decision.value ?? "" }, { timeout: 6000 }).catch(() => locator.selectOption(decision.value ?? "", { timeout: 6000 }));
             break;
+          }
           case "scroll_down":
             await page.mouse.wheel(0, device.viewport.height * 0.8);
             break;
@@ -322,7 +417,7 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
 
       const after = await shoot();
       await recordSafely({ step: i, action: decision.action, target: targetDesc ?? null, url: page.url(), result, reasoning: decision.reasoning, observation: decision.observation, error }, after);
-      history.push(`${i}. ${decision.action}${targetDesc ? ` ${targetDesc}` : ""} → ${error ? `ERROR: ${error}` : `now at ${page.url()}`}`);
+      history.push(`${i}. ${decision.action}${targetDesc ? ` ${targetDesc}` : ""} → ${error ? `ERROR: ${error}` : `${result !== "ok" ? `${result} ` : ""}now at ${page.url()}`}`);
     }
   } catch (e) {
     if (killed === "stopped" || cfg.signal?.aborted) {

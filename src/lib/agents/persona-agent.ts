@@ -290,6 +290,13 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
   const recordSafely = (s: Omit<RecordedStep, "screenshotPath">, jpeg: Buffer | null, forceShot = false) =>
     within(record(s, jpeg, forceShot), LIMIT.record, "Saving the step");
 
+  // One line per step in the worker logs, so slow phases are easy to spot.
+  const tag = `[agent ${cfg.sessionId.slice(0, 8)} ${cfg.persona.name}]`;
+  const timer = () => {
+    const t0 = Date.now();
+    return () => Date.now() - t0;
+  };
+
   const setActivity = (current_activity: string, action_count: number) =>
     db.from("sessions").update({ current_activity, action_count }).eq("id", cfg.sessionId);
 
@@ -297,6 +304,7 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
     await assertPublicUrl(cfg.startUrl);
     await setActivity(`Opening ${cfg.startUrl}`, 0);
     let navError: string | null = null;
+    const openTime = timer();
     try {
       const res = await page.goto(cfg.startUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
       if (res && res.status() >= 400) navError = `HTTP ${res.status()}`;
@@ -304,7 +312,9 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
     } catch (e) {
       navError = e instanceof Error ? e.message.split("\n")[0] : "Navigation failed";
     }
+    const loadMs = openTime();
     const firstShot = await shoot();
+    console.log(`${tag} opened ${cfg.startUrl} in ${loadMs}ms (+${openTime() - loadMs}ms screenshot)${navError ? ` · ${navError}` : ""}`);
     await recordSafely({ step: 0, action: "open", target: cfg.startUrl, url: page.url(), result: navError ? "error" : "loaded", reasoning: null, error: navError }, firstShot, true);
     if (navError && (page.url() === "about:blank" || page.url().startsWith("chrome-error:"))) {
       ending = "error";
@@ -329,8 +339,11 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
         ending = "time_limit";
         break;
       }
+      const stepTime = timer();
       const snap = await within(snapshot(page), LIMIT.snapshot, "Reading the page").catch(() => ({ elements: [] as Element[], text: "", title: "" }));
       const shot = await shoot();
+      const lookMs = stepTime();
+      await setActivity(i === 1 ? "Reading the page" : `Thinking about step ${i}`, i - 1);
 
       const content: Anthropic.Beta.BetaContentBlockParam[] = [];
       if (shot) content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: shot.toString("base64") } });
@@ -356,6 +369,7 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
         maxRetries: 1,
         signal: cfg.signal,
       });
+      const decideMs = stepTime() - lookMs;
       await setActivity(decision.progress_note, i);
 
       if (decision.action === "finish" || decision.action === "give_up") {
@@ -417,6 +431,7 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
 
       const after = await shoot();
       await recordSafely({ step: i, action: decision.action, target: targetDesc ?? null, url: page.url(), result, reasoning: decision.reasoning, observation: decision.observation, error }, after);
+      console.log(`${tag} step ${i} ${decision.action}${error ? " (error)" : ""} · look ${lookMs}ms · decide ${decideMs}ms · act ${stepTime() - lookMs - decideMs}ms`);
       history.push(`${i}. ${decision.action}${targetDesc ? ` ${targetDesc}` : ""} → ${error ? `ERROR: ${error}` : `${result !== "ok" ? `${result} ` : ""}now at ${page.url()}`}`);
     }
   } catch (e) {

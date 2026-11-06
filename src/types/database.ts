@@ -80,6 +80,8 @@ export type TestRow = {
   share_token: string | null;
   shared_at: string | null;
   cancel_requested_at: string | null;
+  heartbeat_at: string | null;
+  attempts: number;
 };
 
 export type PersonaRow = {

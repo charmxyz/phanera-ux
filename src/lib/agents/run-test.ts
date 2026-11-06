@@ -12,8 +12,24 @@ import type { Json, Outcome, TestRow } from "@/types/database";
 // Personas run in parallel inside one browser; lower this on small machines (~500 MB each).
 const MAX_CONCURRENT_PERSONAS = Math.max(1, Math.min(10, Number(process.env.PERSONA_CONCURRENCY) || 3));
 
-/** Executes a full persona test. Runs in a background worker (Trigger.dev), never in a request. */
+/** How often a running test checks in; the worker sweep treats ~2 minutes of silence as a dead worker. */
+export const HEARTBEAT_MS = 15_000;
+
+/** Executes a full persona test in a background worker, never in a request. */
 export async function runTest(testId: string) {
+  const db = createAdminClient();
+  // Heartbeat for the whole run, including the (slow) report-writing phase.
+  const beat = setInterval(() => {
+    void db.from("tests").update({ heartbeat_at: new Date().toISOString() }).eq("id", testId).then(() => {}, () => {});
+  }, HEARTBEAT_MS);
+  try {
+    await runTestInner(testId);
+  } finally {
+    clearInterval(beat);
+  }
+}
+
+async function runTestInner(testId: string) {
   const db = createAdminClient();
   const { data: test } = await db.from("tests").select("*").eq("id", testId).single();
   if (!test) throw new Error(`Test ${testId} not found`);
@@ -29,7 +45,7 @@ export async function runTest(testId: string) {
   const limits = planLimits(effectivePlan(profile));
   const cfg = (test.configuration ?? {}) as { startUrl?: string };
 
-  await db.from("tests").update({ status: "running", started_at: new Date().toISOString(), error: null }).eq("id", testId);
+  await db.from("tests").update({ status: "running", started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString(), error: null }).eq("id", testId);
 
   // The user can stop the test from the dashboard; watch for it while personas run.
   const stop = new AbortController();

@@ -11,13 +11,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runDiscovery } from "@/lib/discovery/run";
 import { runTest } from "@/lib/agents/run-test";
 import { refundTestRun } from "@/lib/usage/usage";
-import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
+import { forceStopTest, recoverOrphanedTest, STOP_GRACE_MS } from "@/lib/agents/stop";
+import os from "node:os";
 import type { DiscoveryStatus } from "@/types/database";
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS) || 3000;
 const MAX_TESTS = Math.max(1, Number(process.env.WORKER_MAX_TESTS) || 1);
 const MAX_DISCOVERIES = Math.max(1, Number(process.env.WORKER_MAX_DISCOVERIES) || 2);
-// Jobs left "in progress" by a crashed/redeployed worker are failed after these.
+// A running test that hasn't sent a heartbeat for this long lost its worker (crash, OOM, redeploy).
+const ORPHAN_TEST_MS = 2 * 60_000;
+// Hard ceiling for any test, heartbeat or not.
 const STALE_TEST_MS = 75 * 60_000;
 const STALE_DISCOVERY_MS = 15 * 60_000;
 const ACTIVE_DISCOVERY: DiscoveryStatus[] = ["fetching", "discovering", "extracting", "analysing"];
@@ -25,6 +28,7 @@ const ACTIVE_DISCOVERY: DiscoveryStatus[] = ["fetching", "discovering", "extract
 const db = createAdminClient();
 let stopping = false;
 const running = { tests: 0, discoveries: 0 };
+const activeTests = new Set<string>();
 const log = (...a: unknown[]) => console.log(new Date().toISOString(), "[worker]", ...a);
 
 async function claimDiscovery(): Promise<string | null> {
@@ -46,7 +50,7 @@ async function claimTest(): Promise<string | null> {
   for (const c of candidates ?? []) {
     const { data } = await db
       .from("tests")
-      .update({ status: "running", started_at: new Date().toISOString() })
+      .update({ status: "running", started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
       .eq("id", c.id)
       .eq("status", "queued")
       .select("id");
@@ -69,6 +73,18 @@ async function failStaleJobs() {
     await refundTestRun(t.user_id, t.id);
     log("failed stale test", t.id);
   }
+  // Tests whose worker died: heartbeat silent (or never sent, for runs claimed by older workers).
+  const silentSince = new Date(now - ORPHAN_TEST_MS).toISOString();
+  const { data: orphans } = await db
+    .from("tests")
+    .select("id, user_id, attempts, cancel_requested_at, heartbeat_at, started_at")
+    .in("status", ["running", "evaluating"])
+    .or(`heartbeat_at.lt."${silentSince}",and(heartbeat_at.is.null,started_at.lt."${silentSince}")`);
+  for (const t of orphans ?? []) {
+    if (activeTests.has(t.id)) continue; // ours and alive (heartbeat write may just be slow)
+    log(`orphaned test ${t.id}: ${await recoverOrphanedTest(t)}`);
+  }
+
   // Stop requests the running job never picked up (e.g. it was stuck) are applied here.
   const { data: stuck } = await db
     .from("tests")
@@ -110,7 +126,8 @@ async function tick() {
   while (running.tests < MAX_TESTS) {
     const id = await claimTest();
     if (!id) break;
-    launch("tests", id, () => runTest(id));
+    activeTests.add(id);
+    launch("tests", id, () => runTest(id).finally(() => activeTests.delete(id)));
   }
 }
 
@@ -121,6 +138,8 @@ async function main() {
     try {
       if (Date.now() - lastStaleCheck > 60_000) {
         lastStaleCheck = Date.now();
+        const mb = (n: number) => Math.round(n / 1024 / 1024);
+        log(`health · running tests ${running.tests} · node rss ${mb(process.memoryUsage().rss)} MB · system free ${mb(os.freemem())} of ${mb(os.totalmem())} MB`);
         await failStaleJobs();
       }
       await tick();
@@ -136,8 +155,14 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
     if (stopping) process.exit(1);
     stopping = true;
     log(`${sig}: no new jobs; waiting for ${running.tests + running.discoveries} running job(s)`);
-    const deadline = Date.now() + 25_000;
+    const deadline = Date.now() + 20_000;
     while (running.tests + running.discoveries > 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 500));
+    // Tests still running can't finish here: hand them straight back to the queue so the
+    // next worker restarts them now, instead of after the 2-minute orphan timeout.
+    for (const id of activeTests) {
+      const { data: t } = await db.from("tests").select("id, user_id, attempts, cancel_requested_at").eq("id", id).single();
+      if (t) log(`handing back test ${id}: ${await recoverOrphanedTest(t, false).catch((e) => `failed (${e instanceof Error ? e.message : e})`)}`);
+    }
     process.exit(0);
   });
 }

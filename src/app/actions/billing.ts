@@ -31,20 +31,26 @@ export async function startStripeCheckout() {
     customer = (await s.customers.create({ email: user.email ?? profile.email, metadata: { userId: user.id } })).id;
     await createAdminClient().from("profiles").update({ stripe_customer_id: customer }).eq("id", user.id);
   }
-  const app = env.appUrl();
-  const session = await s.checkout.sessions.create({
-    mode: "subscription",
-    customer,
-    client_reference_id: user.id,
-    line_items: [{ price: env.stripePriceId()!, quantity: 1 }],
-    subscription_data: { metadata: { userId: user.id } },
-    allow_promotion_codes: true,
-    // Lets a 100%-off promotion code complete checkout without entering a card.
-    payment_method_collection: "if_required",
-    success_url: `${app}/dashboard/billing/stripe?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${app}${back("cancelled")}`,
-  });
-  if (!session.url) throw new Error("Stripe did not return a checkout link.");
+  const app = env.appOrigin();
+  let session: Awaited<ReturnType<typeof s.checkout.sessions.create>>;
+  try {
+    session = await s.checkout.sessions.create({
+      mode: "subscription",
+      customer,
+      client_reference_id: user.id,
+      line_items: [{ price: env.stripePriceId()!, quantity: 1 }],
+      subscription_data: { metadata: { userId: user.id } },
+      allow_promotion_codes: true,
+      // Lets a 100%-off promotion code complete checkout without entering a card.
+      payment_method_collection: "if_required",
+      success_url: `${app}/dashboard/billing/stripe?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${app}${back("cancelled")}`,
+    });
+  } catch (e) {
+    console.error("[stripe] could not start checkout", e);
+    redirect(back("error"));
+  }
+  if (!session.url) redirect(back("error"));
   redirect(session.url);
 }
 
@@ -52,7 +58,7 @@ export async function startStripeCheckout() {
 export async function openStripePortal() {
   const { profile } = await loadProfile();
   if (!profile.stripe_customer_id || !isStripeConfigured()) redirect(back("unavailable"));
-  const portal = await stripe().billingPortal.sessions.create({ customer: profile.stripe_customer_id, return_url: `${env.appUrl()}${SETTINGS}#billing` });
+  const portal = await stripe().billingPortal.sessions.create({ customer: profile.stripe_customer_id, return_url: `${env.appOrigin()}${SETTINGS}#billing` });
   redirect(portal.url);
 }
 
@@ -61,7 +67,14 @@ export async function startPaypalCheckout() {
   if (!isPaypalConfigured()) redirect(back("unavailable"));
   const { user, profile } = await loadProfile();
   if (effectivePlan(profile) === "startup" && !profile.cancel_at_period_end) redirect(back("already"));
-  const approveUrl = await createPaypalSubscription({ userId: user.id, email: user.email ?? profile.email });
+  let approveUrl: string;
+  try {
+    approveUrl = await createPaypalSubscription({ userId: user.id, email: user.email ?? profile.email });
+  } catch (e) {
+    // Show a friendly notice instead of an error page; the PayPal details are in the server logs.
+    console.error("[paypal] could not start checkout", e);
+    redirect(back("error"));
+  }
   redirect(approveUrl);
 }
 

@@ -30,7 +30,17 @@ async function paypal<T>(path: string, init: { method?: string; body?: unknown }
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`PayPal ${init.method ?? "GET"} ${path} failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    // PayPal's error body names the exact field and issue; log it in full (no secrets in it).
+    const text = await res.text();
+    let detail = text.slice(0, 500);
+    try {
+      const j = JSON.parse(text) as { name?: string; message?: string; debug_id?: string; details?: { field?: string; issue?: string; description?: string }[] };
+      detail = [j.name, j.message, ...(j.details ?? []).map((d) => `${d.field ?? ""} ${d.issue ?? ""} ${d.description ?? ""}`.trim()), j.debug_id && `debug_id=${j.debug_id}`].filter(Boolean).join(" | ");
+    } catch { /* not JSON */ }
+    console.error(`[paypal] ${init.method ?? "GET"} ${path} → ${res.status}: ${detail}`);
+    throw new Error(`PayPal ${init.method ?? "GET"} ${path} failed (${res.status}): ${detail}`);
+  }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
@@ -46,7 +56,7 @@ export type PaypalSubscription = {
 export async function createPaypalSubscription(input: { userId: string; email: string }) {
   const planId = env.paypalPlanId();
   if (!planId) throw new Error("PayPal is not configured.");
-  const app = env.appUrl();
+  const app = env.appOrigin();
   const sub = await paypal<PaypalSubscription>("/v1/billing/subscriptions", {
     method: "POST",
     body: {
@@ -58,7 +68,8 @@ export async function createPaypalSubscription(input: { userId: string; email: s
         user_action: "SUBSCRIBE_NOW",
         shipping_preference: "NO_SHIPPING",
         return_url: `${app}/dashboard/billing/paypal`,
-        cancel_url: `${app}/dashboard/settings?billing=cancelled#billing`,
+        // No "#fragment": PayPal's URL validation rejects it with a 400 MALFORMED_REQUEST.
+        cancel_url: `${app}/dashboard/settings?billing=cancelled`,
       },
     },
   });

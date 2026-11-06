@@ -17,6 +17,11 @@ function required(name: string): string {
 
 export const env = {
   appUrl: () => optional("NEXT_PUBLIC_APP_URL") ?? "http://localhost:3000",
+  /** Clean origin of the app URL (tolerates a trailing slash, spaces or a missing scheme). */
+  appOrigin: () => {
+    const raw = (optional("NEXT_PUBLIC_APP_URL") ?? "http://localhost:3000").trim();
+    return new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`).origin;
+  },
   supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: () => required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   supabaseServiceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),

@@ -40,14 +40,15 @@ export const personaPrompt = {
   system: [
     "You design realistic test personas for exploring a website.",
     "Personas are fictional and simulated; never imply they are real users.",
-    "Make personas distinct in goal, familiarity, patience and device.",
-    "Always include exactly one persona of kind 'ai_agent': an autonomous AI assistant whose objective is to locate and extract accurate product information and important pages. It does not pretend to be human.",
-    "Goals must be achievable (or verifiably not achievable) by browsing the public site without logging in or paying.",
+    "Every persona in a test attempts the SAME test goal. Personas differ only in who they are: motivation, context, familiarity, behaviour, patience and device.",
+    "The `goal` field is the persona's motivation (why they care, what they personally want out of it), not a separate task. Do not give personas their own tasks, lists of facts to extract, or extra pages to find.",
+    "Always include exactly one persona of kind 'ai_agent': an autonomous AI assistant browsing on a user's behalf, motivated by returning an accurate, well-sourced answer. It does not pretend to be human.",
+    "Everything must be doable (or verifiably not doable) by browsing the public site without logging in or paying.",
   ].join("\n"),
   user(input: { summary: unknown; count: number; testGoal?: string }) {
     return [
       `Website understanding (JSON): ${JSON.stringify(input.summary)}`,
-      input.testGoal ? `The user wants to test: "${input.testGoal}". Align persona goals with this.` : "",
+      input.testGoal ? `The test goal every persona will attempt: "${input.testGoal}". Choose personas whose different motivations and behaviours would plausibly reveal different friction with this goal.` : "",
       `Generate ${input.count} personas.`,
     ]
       .filter(Boolean)
@@ -70,13 +71,14 @@ export const browserAgentPrompt = {
         : `You are role-playing ${p.name}, a ${p.role}. Context: ${p.context}. Behaviour: ${p.behaviour}. Patience: ${p.patience}. Browse as this person realistically would on ${p.device}.`;
     return [
       identity,
-      `Your goal: ${p.goal}`,
-      `The overall test question: ${input.testGoal}`,
-      `You have succeeded when: ${p.success_criteria}`,
+      `Your task: ${input.testGoal}`,
+      `Why you are here (your motivation): ${p.goal}`,
+      p.success_criteria ? `You would trust the answer when: ${p.success_criteria}` : "",
+      "Every persona in this test has the same task. Your motivation and behaviour shape how you look for the answer, not what you are looking for. Do not take on extra tasks.",
       "",
       "Each turn you receive a screenshot, the current URL, visible text and a numbered list of interactive elements.",
       "Choose exactly ONE next action. Reference elements by their [ref] number.",
-      `You have at most ${input.maxActions} actions. Finish as soon as the goal is achieved, or give up if you are genuinely stuck — that is a valid, useful result.`,
+      `You have at most ${input.maxActions} actions. Finish as soon as you can answer the task with evidence, or give up if you are genuinely stuck — that is a valid, useful result.`,
       "",
       "Safety rules (non-negotiable):",
       `- Stay on ${input.allowedDomain} and its subdomains.`,
@@ -95,7 +97,7 @@ export const evaluationPrompt = {
   system: [
     "You are an independent evaluator reviewing a recorded browser session from Phanera.",
     "You did not perform the session. Judge only from the recorded steps, URLs, results and screenshots.",
-    "Decide whether the persona actually achieved its goal. Do not trust the agent's own claim of success without evidence.",
+    "Decide whether the persona actually achieved the test goal (every persona shares it; the persona's motivation and behaviour only explain how it browsed). Do not trust the agent's own claim of success without evidence.",
     "Outcomes: success (goal met with evidence), partial_success, failed (attempted, did not meet goal), abandoned (agent stopped/ran out of actions without clear blocker), blocked (a concrete obstacle such as CAPTCHA, error page, login wall), inconclusive (insufficient evidence).",
     "Distinguish website problems from agent mistakes, timeouts and environment errors. Do not label agent errors as website defects.",
     UNTRUSTED_RULE,

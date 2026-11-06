@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { BotIcon, ChevronDownIcon, ChevronLeftIcon, TargetIcon } from "lucide-react";
+import { ChevronLeftIcon, TargetIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { AutoRefresh } from "@/components/dashboard/auto-refresh";
@@ -12,6 +12,7 @@ import { AntAvatar } from "@/components/ants/pixel-ant";
 import { requireSession, signedScreenshotUrls, formatDuration } from "@/lib/dashboard/queries";
 import type { Persona, SessionEvaluation } from "@/lib/claude/schemas";
 import { pageKey } from "@/components/sessions/journey";
+import { AgentReport } from "@/components/sessions/agent-report";
 
 export const metadata: Metadata = { title: "Agent session" };
 
@@ -63,27 +64,26 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
             <Stat label="Pages visited" value={String(pagesVisited)} />
             <Stat label="Issues noted" value={String(evaluation?.observations?.length ?? 0)} />
           </dl>
-          {session.agent_summary && <AgentReport text={session.agent_summary} />}
+          {session.agent_summary && <AgentReport text={session.agent_summary} className="border-t border-border px-5 py-4" />}
         </Card>
 
         <Card className="gap-0 py-0">
           <div className="grid gap-2 px-5 py-5">
-            <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Task</span>
-            <p className="leading-relaxed text-pretty">{persona?.goal}</p>
+            <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase"><TargetIcon className="size-3.5" />Test goal</span>
+            <p className="leading-relaxed text-pretty">{test?.goal}</p>
+            <p className="text-xs text-muted-foreground">Shared by every persona in this test.</p>
             {session.current_activity && active && <p className="text-primary">{session.current_activity}</p>}
           </div>
-          {conf.success_criteria && (
-            <div className="mx-5 mb-5 grid gap-1 rounded-lg border border-border bg-muted/40 px-3.5 py-3">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><TargetIcon className="size-3.5" />Success when</span>
-              <p className="leading-relaxed text-pretty">{conf.success_criteria}</p>
-            </div>
-          )}
-          {(
-            <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              <span className="rounded-md bg-muted px-2 py-0.5">{conf.kind === "ai_agent" ? "AI agent" : "Human persona"}</span>
-              <span className="rounded-md bg-muted px-2 py-0.5 capitalize">{conf.device ?? "desktop"}</span>
-            </div>
-          )}
+          <dl className="grid gap-3 border-t border-border px-5 py-4">
+            <PersonaFact label="Motivation" value={persona?.goal} />
+            <PersonaFact label="How they browse" value={conf.behaviour} />
+            <PersonaFact label="Trusts the answer when" value={conf.success_criteria} />
+          </dl>
+          <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            <span className="rounded-md border border-border px-2 py-0.5">{conf.kind === "ai_agent" ? "AI agent" : "Human persona"}</span>
+            <span className="rounded-md border border-border px-2 py-0.5 capitalize">{conf.device ?? "desktop"}</span>
+            {conf.patience && <span className="rounded-md border border-border px-2 py-0.5 capitalize">{conf.patience} patience</span>}
+          </div>
         </Card>
       </div>
       {evaluation?.observations?.length ? (
@@ -99,10 +99,10 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
                 <div className="grid gap-1.5">
                   <p className="leading-snug">{o.issue}</p>
                   <div className="flex flex-wrap gap-1.5 text-xs">
-                    <span className={o.is_website_issue ? "rounded-md bg-warning/10 px-1.5 py-0.5 text-warning" : "rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground"}>
+                    <span className={o.is_website_issue ? "rounded-md bg-warning/10 px-1.5 py-0.5 text-warning" : "rounded-md border border-border px-1.5 py-0.5 text-muted-foreground"}>
                       {o.is_website_issue ? "Website issue" : "Agent / environment"}
                     </span>
-                    {o.directly_observed && <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">Seen in screenshot</span>}
+                    {o.directly_observed && <span className="rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">Seen in screenshot</span>}
                   </div>
                 </div>
               </li>
@@ -118,7 +118,7 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
         <CardContent>
           <JourneyGraph
             persona={persona?.name ?? "Agent"}
-            goal={persona?.goal ?? test?.goal ?? ""}
+            goal={test?.goal ?? ""}
             outcome={session.outcome}
             finalReport={session.agent_summary}
             active={active}
@@ -143,38 +143,12 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
   );
 }
 
-function ReportList({ points }: { points: string[] }) {
+function PersonaFact({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
   return (
-    <ul className="grid gap-2">
-      {points.map((pt, i) => (
-        <li key={i} className="flex gap-2.5 leading-relaxed">
-          <span className="mt-2.5 size-1 shrink-0 rounded-full bg-muted-foreground/60" />
-          <span className="min-w-0 break-words"><Linkified text={pt} /></span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** The agent's own words: the first few points, with the rest behind a toggle. */
-function AgentReport({ text }: { text: string }) {
-  const points = reportPoints(text);
-  const head = points.slice(0, 3);
-  const rest = points.slice(3);
-  return (
-    <div className="grid gap-3 border-t border-border bg-muted/40 px-5 py-4">
-      <span className="flex items-center gap-2 font-medium"><BotIcon className="size-4 text-muted-foreground" />Agent&apos;s own report</span>
-      <ReportList points={head} />
-      {rest.length > 0 && (
-        <details className="group grid gap-2">
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-            <span className="group-open:hidden">Show {rest.length} more</span>
-            <span className="hidden group-open:inline">Show less</span>
-            <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="pt-2"><ReportList points={rest} /></div>
-        </details>
-      )}
+    <div className="grid gap-0.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="leading-relaxed text-pretty">{value}</dd>
     </div>
   );
 }
@@ -185,31 +159,5 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="font-mono text-base tabular-nums">{value}</dd>
     </div>
-  );
-}
-
-/** Splits the agent's run-on report into readable points (sentence / clause boundaries). */
-function reportPoints(text: string): string[] {
-  return text
-    .split(/(?<=[.;])\s+(?=[A-Z])/)
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
-/** Renders URLs as compact links so long reports stay scannable. */
-function Linkified({ text }: { text: string }) {
-  const parts = text.split(/(https?:\/\/[^\s,;)]+)/g);
-  return (
-    <>
-      {parts.map((part, i) =>
-        /^https?:\/\//.test(part) ? (
-          <a key={i} href={part.replace(/[.]$/, "")} target="_blank" rel="noreferrer noopener" className="font-mono text-xs text-muted-foreground underline decoration-border underline-offset-2 hover:text-foreground">
-            {part.replace(/^https?:\/\/(www\.)?/, "").replace(/[.]$/, "")}
-          </a>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
   );
 }

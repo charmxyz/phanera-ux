@@ -65,9 +65,15 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
     <div className="grid gap-6">
       <AutoRefresh active={active} />
       <PageHeader
-        eyebrow={<Link href={`/dashboard/websites/${website.id}`} className="font-mono hover:text-foreground">{website.domain}</Link>}
-        title={test.title}
-        description={<span className="font-mono text-xs">{formatDate(test.created_at)}</span>}
+        eyebrow={<span className="font-mono">Test · {formatDate(test.created_at)}</span>}
+        title={
+          <Link href={`/dashboard/websites/${website.id}`} className="flex min-w-0 items-center gap-2.5 hover:opacity-80">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`https://www.google.com/s2/favicons?domain=${website.domain}&sz=64`} alt="" className="size-6 shrink-0 rounded" />
+            <span className="truncate">{website.domain}</span>
+          </Link>
+        }
+        description={<span className="block max-w-3xl text-[15px] leading-snug text-pretty text-muted-foreground">{test.goal}</span>}
         actions={<StatusLabel status={test.status} />}
       />
 
@@ -126,10 +132,6 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
         <TabsContent value="overview" className="mt-4 grid gap-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <Card className="gap-0 py-0">
-              <div className="grid gap-1.5 border-b border-border px-5 py-4">
-                <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Goal</span>
-                <p className="text-[15px] leading-snug text-pretty">{test.goal}</p>
-              </div>
               <div className="grid gap-5 px-5 py-5">
                 {summary ? (
                   <>
@@ -142,7 +144,7 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
                 )}
               </div>
               {sessions.length > 0 && (
-                <div className="mt-auto grid gap-2 border-t border-border bg-muted/40 px-5 py-4">
+                <div className="mt-auto grid gap-2 border-t border-border px-5 py-4">
                   <span className="text-xs text-muted-foreground">Personas</span>
                   <div className="flex flex-wrap gap-2">
                     {sessions.map((s) => {
@@ -240,7 +242,7 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
                         </div>
                         <span className="text-muted-foreground">{conf.kind === "ai_agent" ? <BotIcon className="size-4" /> : conf.device === "mobile" ? <SmartphoneIcon className="size-4" /> : <MonitorIcon className="size-4" />}</span>
                       </div>
-                      <p className="text-sm"><span className="text-muted-foreground">Goal: </span>{p?.goal}</p>
+                      <p className="text-sm"><span className="text-muted-foreground">Motivation: </span>{p?.goal}</p>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                         {s.outcome ? <OutcomeLabel outcome={s.outcome} /> : <StatusLabel status={s.status} />}
                         <span className="font-mono">{formatDuration(s.duration_ms)} · {s.action_count} actions · {conf.device ?? "desktop"}</span>
@@ -296,7 +298,7 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
                   return null;
                 })();
                 return (
-                  <AccordionItem key={f.id} value={f.id} className="rounded-xl border border-border px-4">
+                  <AccordionItem key={f.id} value={f.id} className="rounded-xl border-0 bg-card px-5 ring-1 ring-foreground/10">
                     <AccordionTrigger className="gap-3 hover:no-underline">
                       <span className="flex min-w-0 flex-1 items-center gap-3">
                         <SeverityBadge severity={f.severity} />
@@ -321,7 +323,7 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
                           <p className="text-xs text-muted-foreground">Evidence</p>
                           <ol className="grid gap-1.5 text-sm">
                             {evidence.map((e, i) => (
-                              <li key={i} className="rounded-md border border-border px-2.5 py-1.5">
+                              <li key={i} className="rounded-md border border-border px-3 py-2">
                                 <span className="font-mono text-xs text-muted-foreground">{e.persona}{e.step != null ? ` · step ${e.step}` : ""}</span>
                                 <p>{e.note}</p>
                               </li>

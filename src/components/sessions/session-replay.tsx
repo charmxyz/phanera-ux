@@ -84,7 +84,7 @@ export function SessionReplay({ events, startedAt }: { events: ReplayEvent[]; st
               onClick={() => setIdx(i)}
               className={cn(
                 "flex w-full gap-3 rounded-md px-2 py-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                i === idx ? "bg-accent" : "hover:bg-accent/50",
+                i === idx ? "bg-card ring-1 ring-foreground/15" : "hover:bg-muted/50",
               )}
             >
               <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", e.error ? "bg-destructive" : e.action === "finish" ? "bg-success" : e.action === "give_up" ? "bg-warning" : "bg-foreground/60")} />
@@ -97,7 +97,7 @@ export function SessionReplay({ events, startedAt }: { events: ReplayEvent[]; st
                 {e.error && (
                   <span className="flex items-start gap-1 text-xs text-destructive"><AlertCircleIcon className="mt-0.5 size-3 shrink-0" />{e.error}</span>
                 )}
-                {(e.action === "finish" || e.action === "give_up") && e.result && <span className={cn("text-xs text-muted-foreground", i !== idx && "line-clamp-3")}>{e.result}</span>}
+                {(e.action === "finish" || e.action === "give_up") && e.result && <span className="line-clamp-2 text-xs text-muted-foreground">{e.result}</span>}
               </span>
             </button>
           </li>

@@ -59,7 +59,7 @@ export async function synthesiseFindings(input: {
       `<website_content>\nSessions (JSON):\n${JSON.stringify(
         input.sessions.map((s) => ({
           persona: `${s.persona.name} (${s.persona.role}, ${s.persona.kind}, ${s.persona.device})`,
-          goal: s.persona.goal,
+          motivation: s.persona.goal,
           ending: s.ending,
           evaluation: s.evaluation,
           steps: s.steps.map(({ step, action, target, url, result, error }) => ({ step, action, target, url, result, error })),

@@ -48,7 +48,7 @@ export function PersonaEditor({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{persona?.name ? `Edit ${persona.name}` : "Custom persona"}</DialogTitle>
-          <DialogDescription>Personas are simulated by AI agents. Describe who they are and what they want.</DialogDescription>
+          <DialogDescription>Personas are simulated by AI agents. Every persona attempts the same test goal; describe who they are, why they care and how they browse.</DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-3"
@@ -61,10 +61,10 @@ export function PersonaEditor({
             <Field label="Name" id="p-name"><Input id="p-name" value={draft.name} onChange={(e) => set("name", e.target.value)} maxLength={40} required /></Field>
             <Field label="Role" id="p-role"><Input id="p-role" value={draft.role} onChange={(e) => set("role", e.target.value)} maxLength={60} required /></Field>
           </div>
-          <Field label="Goal" id="p-goal"><Textarea id="p-goal" value={draft.goal} onChange={(e) => set("goal", e.target.value)} maxLength={300} rows={2} required /></Field>
+          <Field label="Motivation" id="p-goal"><Textarea id="p-goal" value={draft.goal} onChange={(e) => set("goal", e.target.value)} maxLength={300} rows={2} required /></Field>
           <Field label="Context" id="p-context"><Textarea id="p-context" value={draft.context} onChange={(e) => set("context", e.target.value)} maxLength={400} rows={2} /></Field>
           <Field label="Behaviour" id="p-behaviour"><Textarea id="p-behaviour" value={draft.behaviour} onChange={(e) => set("behaviour", e.target.value)} maxLength={300} rows={2} /></Field>
-          <Field label="Success criteria" id="p-success"><Input id="p-success" value={draft.success_criteria} onChange={(e) => set("success_criteria", e.target.value)} maxLength={200} /></Field>
+          <Field label="Trusts the answer when" id="p-success"><Input id="p-success" value={draft.success_criteria} onChange={(e) => set("success_criteria", e.target.value)} maxLength={200} /></Field>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Type" id="p-kind">
               <select id="p-kind" className={selectClass} value={draft.kind} onChange={(e) => set("kind", e.target.value as Persona["kind"])}>

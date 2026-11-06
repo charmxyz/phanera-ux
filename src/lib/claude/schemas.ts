@@ -32,11 +32,13 @@ export const PersonaSchema = z.object({
   role: z.string().describe("Short label, e.g. First-time visitor"),
   kind: z.enum(["human", "ai_agent"]),
   context: z.string(),
-  goal: z.string(),
+  // Stored as `goal` for compatibility, but this is the persona's motivation: every persona
+  // in a test attempts the same test goal; who they are only changes *how* they go about it.
+  goal: z.string().describe("Motivation: why this person is on the site and what they personally care about (1 sentence). Not a separate task."),
   device: z.enum(["desktop", "mobile"]),
-  behaviour: z.string(),
+  behaviour: z.string().describe("How they browse: familiarity, reading style, what they click first"),
   patience: z.enum(["low", "medium", "high"]),
-  success_criteria: z.string(),
+  success_criteria: z.string().describe("What this persona would need to see to trust the answer, given their motivation (1 sentence)"),
 });
 export type Persona = z.infer<typeof PersonaSchema>;
 

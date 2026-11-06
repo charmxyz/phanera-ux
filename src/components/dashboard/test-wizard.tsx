@@ -114,7 +114,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
       <Step
         n={3}
         title="Personas"
-        description={`Select up to ${limits.personasPerTest} personas on the ${limits.planLabel} plan.`}
+        description={`Every persona attempts the goal above, each with their own motivation and browsing style. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={regenerate} disabled={regenPending}>
@@ -148,7 +148,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
                   {it.persona.kind === "ai_agent" ? <BotIcon className="size-4" /> : it.persona.device === "mobile" ? <SmartphoneIcon className="size-4" /> : <MonitorIcon className="size-4" />}
                 </span>
               </div>
-              <p className="line-clamp-4 text-sm break-words" title={it.persona.goal}><span className="text-muted-foreground">Goal: </span>{it.persona.goal}</p>
+              <p className="line-clamp-4 text-sm break-words" title={it.persona.goal}><span className="text-muted-foreground">Motivation: </span>{it.persona.goal}</p>
               {it.persona.behaviour && <p className="line-clamp-2 text-xs break-words text-muted-foreground" title={it.persona.behaviour}>{it.persona.behaviour}</p>}
               <div className="mt-auto flex gap-1">
                 <Button variant="ghost" size="xs" onClick={() => setEditing({ key: it.key, persona: it.persona })}><PencilIcon /> Edit</Button>

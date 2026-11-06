@@ -6,7 +6,7 @@ import type { FindingRow, PersonaRow, SessionEventRow, SessionRow } from "@/type
 
 /** Evidence-backed findings, with the screenshot behind each one. Shared by dashboard and share page. */
 export function FindingsList({
-  findings, sessions, personas, eventsBySession, urls, active, seed,
+  findings, sessions, personas, eventsBySession, urls, active, seed, expanded = false,
 }: {
   findings: FindingRow[];
   sessions: SessionRow[];
@@ -15,6 +15,8 @@ export function FindingsList({
   urls: Record<string, string>;
   active: boolean;
   seed: string;
+  /** Open every finding (used on the one-page public report). */
+  expanded?: boolean;
 }) {
   const personaById = new Map(personas.map((p) => [p.id, p]));
   return (
@@ -22,7 +24,7 @@ export function FindingsList({
     {findings.length === 0 ? (
       <EmptyState title={active ? "Findings will appear when the test completes" : "No findings"} description={active ? undefined : "The evaluator didn't find website issues supported by evidence in these sessions."} seed={seed} />
     ) : (
-      <Accordion className="grid gap-2">
+      <Accordion className="grid gap-2" multiple={expanded} defaultValue={expanded ? findings.map((f) => f.id) : undefined}>
         {findings.map((f) => {
           const evidence = (f.evidence as { persona: string; step: number | null; note: string }[]) ?? [];
           const shotEvent = (() => {

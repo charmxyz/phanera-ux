@@ -50,7 +50,7 @@ export function ExploreForm({ className, id = "explore-url" }: { className?: str
             inputMode="url"
             autoComplete="url"
             spellCheck={false}
-            placeholder="https://yourwebsite.com"
+            placeholder="https://acme.com"
             value={value}
             onChange={(e) => {
               setValue(e.target.value);

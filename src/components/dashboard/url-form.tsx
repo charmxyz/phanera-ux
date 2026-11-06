@@ -39,7 +39,7 @@ export function DiscoveryUrlForm({ defaultUrl = "", cta = "Explore website", aut
           autoFocus={autoFocus}
           inputMode="url"
           spellCheck={false}
-          placeholder="https://yourwebsite.com"
+          placeholder="https://acme.com"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           className="h-10 font-mono"

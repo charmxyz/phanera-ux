@@ -60,7 +60,7 @@ export default async function WebsitePage({ params }: PageProps<"/dashboard/webs
               <Field label="Value proposition">{summary.value_proposition}</Field>
               <Field label="Main navigation">{summary.main_navigation.join(" · ")}</Field>
               <Field label="Likely audiences">{summary.likely_audiences.join(", ")}</Field>
-              <Field label="Suggested goals"><ul className="list-disc pl-4">{summary.suggested_goals.map((g) => <li key={g}>{g}</li>)}</ul></Field>
+              <Field label="Suggested user tasks"><ul className="list-disc pl-4">{summary.suggested_goals.map((g) => <li key={g}>{g}</li>)}</ul></Field>
               <Field label="Content gaps"><ul className="list-disc pl-4">{summary.content_gaps.map((g) => <li key={g}>{g}</li>)}</ul></Field>
               <Field label="Accessibility observations"><ul className="list-disc pl-4">{summary.accessibility_observations.map((g) => <li key={g}>{g}</li>)}</ul></Field>
               <Field label="Important pages">
@@ -85,7 +85,7 @@ export default async function WebsitePage({ params }: PageProps<"/dashboard/webs
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
-          <CardHeader><CardTitle className="text-sm">Discovered pages</CardTitle><CardDescription>{pages?.length ?? 0} pages</CardDescription></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Pages analysed</CardTitle><CardDescription>{pages?.length ?? 0} pages</CardDescription></CardHeader>
           <CardContent>
             <Table>
               <TableHeader><TableRow><TableHead>Page</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Words</TableHead></TableRow></TableHeader>
@@ -106,7 +106,7 @@ export default async function WebsitePage({ params }: PageProps<"/dashboard/webs
         </Card>
         {measured && (
           <Card>
-            <CardHeader><CardTitle className="text-sm">Agent readiness (measured)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">AI accessibility (measured)</CardTitle></CardHeader>
             <CardContent><MeasuredTable m={measured} /></CardContent>
           </Card>
         )}

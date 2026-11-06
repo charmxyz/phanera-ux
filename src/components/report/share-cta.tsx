@@ -10,10 +10,10 @@ export function ShareCTA() {
       <div aria-hidden className="fade-edge-b pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-28" />
       <div className="container-reading flex flex-col items-center text-center">
         <p className="mb-5 font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">Like what you&apos;re seeing?</p>
-        <h2 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">Send the colony to your own website.</h2>
-        <p className="mt-5 text-muted-foreground sm:text-lg">Simulated visitors try your site in real browsers and show you exactly where they got stuck.</p>
+        <h2 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] text-balance sm:text-5xl">See your product through your users&apos; eyes.</h2>
+        <p className="mt-5 text-muted-foreground sm:text-lg">AI personas test your website end to end and turn what they experience into research insights in minutes.</p>
         <ExploreForm className="mt-9 max-w-xl" id="share-cta-url" />
-        <p className="mt-3 text-xs text-muted-foreground">Free plan includes 5 test runs. No card needed.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Free plan includes 5 usability tests. No card needed.</p>
       </div>
     </section>
   );

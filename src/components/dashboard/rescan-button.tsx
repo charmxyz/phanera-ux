@@ -22,7 +22,7 @@ export function RescanButton({ url, disabled }: { url: string; disabled?: boolea
         })
       }
     >
-      {pending ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />} Rescan
+      {pending ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />} Re-analyse
     </Button>
   );
 }

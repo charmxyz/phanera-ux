@@ -27,19 +27,19 @@ export default async function DashboardPage() {
     <div className="grid gap-8">
       <PageHeader
         title="Your dashboard"
-        description="Explore your websites, manage tests, and review findings."
+        description="Analyse websites, run usability tests and review research insights."
         actions={<Link href="/dashboard/new" className={buttonVariants({ size: "lg" })}><PlusIcon /> New test</Link>}
       />
 
       {!websites?.length ? (
-        <EmptyState title="Start with your website." description="Paste a URL to see where visitors get stuck." seed={user.id}>
+        <EmptyState title="Start with your website." description="Enter a URL to run your first usability test." seed={user.id}>
           <DiscoveryUrlForm autoFocus />
         </EmptyState>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <Stat label="Completed tests" value={completed} />
-            <Stat label="Remaining test runs" value={`${usage.remaining} / ${usage.allowance}`} hint={usage.period === "lifetime" ? `${usage.limits.label} plan, lifetime` : "This month"} />
+            <Stat label="Usability tests left" value={`${usage.remaining} / ${usage.allowance}`} hint={usage.period === "lifetime" ? `${usage.limits.label} plan, lifetime` : "This month"} />
             <Stat label="Websites" value={websites.length} />
           </div>
 
@@ -68,9 +68,9 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-sm">Recent findings</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">Recent usability findings</CardTitle></CardHeader>
               <CardContent className="grid gap-1">
-                {!findings?.length && <p className="text-sm text-muted-foreground">Findings appear here after a test completes.</p>}
+                {!findings?.length && <p className="text-sm text-muted-foreground">Usability findings appear here after a test completes.</p>}
                 {findings?.map((f) => (
                   <Link key={f.id} href={`/dashboard/tests/${f.test_id}?tab=findings`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-accent">
                     <SeverityBadge severity={f.severity} />

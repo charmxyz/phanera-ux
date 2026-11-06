@@ -34,6 +34,7 @@ export function ReportBody({
       {/* ----------------------------------------------------------- Summary */}
       <div className="grid overflow-hidden rounded-2xl border border-border lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
         <div className="grid content-start gap-3 p-6">
+          <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Test results</span>
           {summary ? (
             <>
               <Verdict counts={summary.counts} total={summary.counts.personas || sessions.length} />
@@ -69,18 +70,18 @@ export function ReportBody({
       </div>
 
       {/* ------------------------------------------------------------ Issues */}
-      <ReportSection id="issues" title="Issues" description="Sorted by urgency. Open a ticket for the evidence and the recommended fix.">
+      <ReportSection id="issues" title="Usability findings" description="Prioritised by severity. Open a finding for the evidence and the recommended fix.">
         {tickets.length ? (
           <IssueBoard tickets={tickets} personas={personas.map((p) => ({ name: p.name, role: p.role }))} />
         ) : (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-            {active ? "Issues appear here when the test finishes." : "No website issues were found in these sessions."}
+            {active ? "Usability findings appear here when the test finishes." : "No usability issues were found in these sessions."}
           </p>
         )}
       </ReportSection>
 
       {/* ---------------------------------------------------------- Sessions */}
-      <ReportSection id="sessions" title="Sessions" description="Pick a persona to see what they did, step by step, with screenshots.">
+      <ReportSection id="sessions" title="Session replays" description="Session replays: pick an AI persona to see their journey, step by step, with screenshots.">
         <SessionSwitcher
           items={sessions.map((s) => {
             const p = personaById.get(s.persona_id);

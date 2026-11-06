@@ -13,12 +13,12 @@ type Counts = Summary["counts"];
 export function Verdict({ counts, total }: { counts: Counts; total: number }) {
   const [text, tone, Icon] =
     total > 0 && counts.success === total
-      ? ["Every persona reached the goal", "text-success", CheckCircle2Icon]
+      ? ["Every persona completed the task", "text-success", CheckCircle2Icon]
       : counts.success > 0
-        ? [`${counts.success} of ${total} personas reached the goal`, "text-success", CheckCircle2Icon]
+        ? [`${counts.success} of ${total} personas completed the task`, "text-success", CheckCircle2Icon]
         : counts.partial > 0
-          ? [`${counts.partial} of ${total} personas partly reached the goal`, "text-warning", AlertTriangleIcon]
-          : ["No persona reached the goal", "text-destructive", XCircleIcon];
+          ? [`${counts.partial} of ${total} personas partly completed the task`, "text-warning", AlertTriangleIcon]
+          : ["No persona completed the task", "text-destructive", XCircleIcon];
   return (
     <div className="flex items-start gap-3">
       <Icon className={`mt-1 size-6 shrink-0 ${tone}`} />

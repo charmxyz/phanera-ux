@@ -42,7 +42,9 @@ const CONFIDENCE = {
   likely: { label: "Likely", hint: "Strongly implied by the session", cls: "text-warning" },
   hypothesis: { label: "Hypothesis", hint: "Plausible, not directly observed", cls: "text-muted-foreground" },
 };
-const words = (c: string) => c.replace(/_/g, " ");
+/** Display names for finding categories (stored values stay unchanged). */
+const CATEGORY: Record<string, string> = { agent_readiness: "AI accessibility" };
+const words = (c: string) => CATEGORY[c] ?? c.replace(/_/g, " ");
 /** "Priya (Head of Operations)" → "Priya" */
 const shortName = (p: string) => p.replace(/\s*\(.*$/, "").trim();
 
@@ -51,7 +53,7 @@ export function IssueBoard({ tickets, personas }: { tickets: Ticket[]; personas:
   const [openId, setOpenId] = useState<string | null>(null);
   const idx = tickets.findIndex((t) => t.id === openId);
   const open = idx >= 0 ? tickets[idx] : null;
-  const key = (t: Ticket) => `ISSUE-${tickets.indexOf(t) + 1}`;
+  const key = (t: Ticket) => `F-${tickets.indexOf(t) + 1}`;
   const seed = (p: string) => {
     const match = personas.find((x) => shortName(p) === x.name);
     return match ? match.name + match.role : p;
@@ -85,7 +87,7 @@ export function IssueBoard({ tickets, personas }: { tickets: Ticket[]; personas:
                 <span className="truncate text-xs text-muted-foreground">{col.hint}</span>
               </div>
               {items.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">No {col.label.toLowerCase()} issues</p>
+                <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">No {col.label.toLowerCase()}-severity findings</p>
               ) : (
                 items.map((t) => (
                   <button
@@ -129,7 +131,7 @@ export function IssueBoard({ tickets, personas }: { tickets: Ticket[]; personas:
               {/* Toolbar: breadcrumb, prev/next, close */}
               <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-white/95 px-4 py-2.5 backdrop-blur sm:px-6">
                 <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Issues</span><span>/</span>
+                  <span>Usability findings</span><span>/</span>
                   <span className="flex items-center gap-1"><span className={cn("size-1.5 rounded-full", SEVERITY[open.severity].dot)} />{SEVERITY[open.severity].label}</span>
                   <span>/</span><span className="font-mono text-foreground">{key(open)}</span>
                 </div>

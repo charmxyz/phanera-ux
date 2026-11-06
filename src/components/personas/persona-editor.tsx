@@ -48,7 +48,7 @@ export function PersonaEditor({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{persona?.name ? `Edit ${persona.name}` : "Custom persona"}</DialogTitle>
-          <DialogDescription>Personas are simulated by AI agents. Every persona attempts the same test goal; describe who they are, why they care and how they browse.</DialogDescription>
+          <DialogDescription>Every AI persona attempts the same user task. Describe who they are, why they care and how they browse.</DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-3"
@@ -69,7 +69,7 @@ export function PersonaEditor({
             <Field label="Type" id="p-kind">
               <select id="p-kind" className={selectClass} value={draft.kind} onChange={(e) => set("kind", e.target.value as Persona["kind"])}>
                 <option value="human">Human</option>
-                <option value="ai_agent">AI agent</option>
+                <option value="ai_agent">AI assistant</option>
               </select>
             </Field>
             <Field label="Device" id="p-device">

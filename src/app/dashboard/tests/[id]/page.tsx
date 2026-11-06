@@ -25,7 +25,7 @@ type Summary = ReportSummary;
 
 const READINESS_LABEL: Record<string, string> = {
   content_accessibility: "Content accessibility",
-  page_discovery: "Page discovery",
+  page_discovery: "Page findability",
   semantic_navigation: "Semantic navigation",
   content_comprehension: "Content comprehension",
   rendering: "Rendering issues",
@@ -56,7 +56,7 @@ export default async function TestPage({ params }: PageProps<"/dashboard/tests/[
     <div className="grid gap-6">
       <AutoRefresh active={active} />
       <PageHeader
-        eyebrow={<span className="font-mono">Test · {formatDate(test.created_at)}</span>}
+        eyebrow={<span className="font-mono">Usability test · {formatDate(test.created_at)}</span>}
         title={
           <Link href={`/dashboard/websites/${website.id}`} className="flex min-w-0 items-center gap-2.5 hover:opacity-80">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,7 +91,7 @@ export default async function TestPage({ params }: PageProps<"/dashboard/tests/[
               {test.cancel_requested_at
                 ? "Stopping… unfinished personas are being stopped, and a report is written from the ones that finished."
                 : test.status === "evaluating"
-                  ? "All sessions recorded. Evaluating evidence and writing findings…"
+                  ? "All sessions recorded. Generating research insights…"
                   : "Agents are exploring the website in isolated browsers. Statuses update live."}
             </CardDescription>
             <CardAction>
@@ -125,7 +125,7 @@ export default async function TestPage({ params }: PageProps<"/dashboard/tests/[
       )}
 
       <ReportBody test={test} personas={personas} sessions={sessions} findings={findings} eventsBySession={eventsBySession} urls={urls} active={active}>
-        <ReportSection id="readiness" title="Agent readiness" description="How easily AI assistants can find and understand this website. Measured from your pages; interpreted by AI.">
+        <ReportSection id="readiness" title="AI accessibility" description="How easily AI assistants can find and understand this website. Measured from your pages; interpreted by AI.">
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="gap-0 py-0">
               <div className="border-b border-border px-5 py-4">

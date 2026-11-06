@@ -32,7 +32,7 @@ export async function startDiscovery(rawUrl: string): Promise<Result<{ websiteId
 
     const usage = await getUsageSummary(user.id);
     if ((await countScansToday(user.id)) >= usage.limits.scansPerDay) {
-      return { ok: false, error: `You've reached the ${usage.limits.scansPerDay} website scans per day limit on the ${usage.limits.label} plan.` };
+      return { ok: false, error: `You've reached the ${usage.limits.scansPerDay} website analyses per day limit on the ${usage.limits.label} plan.` };
     }
 
     const db = createAdminClient();
@@ -65,7 +65,7 @@ export async function regeneratePersonas(websiteId: string, goal: string): Promi
     const db = createAdminClient();
     const { data: website } = await db.from("websites").select("summary, user_id").eq("id", websiteId).single();
     if (!website || website.user_id !== user.id) return { ok: false, error: "Website not found." };
-    if (!website.summary) return { ok: false, error: "Run discovery first." };
+    if (!website.summary) return { ok: false, error: "Analyse the website first." };
     const out = await generateStructured({
       schema: PersonaSuggestionsSchema,
       system: personaPrompt.system,
@@ -106,8 +106,8 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
         ok: false,
         error:
           usage.period === "lifetime"
-            ? `You've used all ${usage.allowance} test runs included in the ${usage.limits.label} plan.`
-            : `You've used all ${usage.allowance} test runs for this month on the ${usage.limits.label} plan.`,
+            ? `You've used all ${usage.allowance} usability tests included in the ${usage.limits.label} plan.`
+            : `You've used all ${usage.allowance} usability tests for this month on the ${usage.limits.label} plan.`,
       };
     }
     if (personas.length > usage.limits.personasPerTest) {

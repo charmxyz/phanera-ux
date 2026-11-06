@@ -32,12 +32,12 @@ export default async function NewTestPage({ searchParams }: PageProps<"/dashboar
       return (
         <div className="grid gap-6">
           <AutoRefresh active={active} />
-          <PageHeader title="New test" description="Review the website, choose a goal and personas, then start the test." />
+          <PageHeader title="New usability test" description="Review the website, choose a user task and AI personas, then start the test." />
           {active && <DiscoveryProgress status={website.discovery_status} domain={website.domain} pageCount={count ?? 0} />}
           {website.discovery_status === "failed" && (
             <Card>
               <CardHeader>
-                <CardTitle>Discovery failed</CardTitle>
+                <CardTitle>Website analysis failed</CardTitle>
                 <CardDescription>{website.discovery_error ?? "We couldn't explore this website."}</CardDescription>
               </CardHeader>
               <CardContent><DiscoveryUrlForm defaultUrl={website.url} cta="Try again" /></CardContent>
@@ -47,7 +47,7 @@ export default async function NewTestPage({ searchParams }: PageProps<"/dashboar
             <>
               {website.discovery_status === "partial" && (
                 <Alert>
-                  <AlertTitle>Partial discovery</AlertTitle>
+                  <AlertTitle>Partial website analysis</AlertTitle>
                   <AlertDescription>{website.discovery_error ?? "Some pages couldn't be read. Results are based on the pages we could access."}</AlertDescription>
                 </Alert>
               )}
@@ -75,7 +75,7 @@ export default async function NewTestPage({ searchParams }: PageProps<"/dashboar
             </>
           )}
           {!active && !summary && website.discovery_status !== "failed" && (
-            <Card><CardContent className="grid gap-3"><p className="text-sm text-muted-foreground">This website needs a fresh scan before testing.</p><DiscoveryUrlForm defaultUrl={website.url} cta="Scan website" /></CardContent></Card>
+            <Card><CardContent className="grid gap-3"><p className="text-sm text-muted-foreground">This website needs a fresh analysis before testing.</p><DiscoveryUrlForm defaultUrl={website.url} cta="Scan website" /></CardContent></Card>
           )}
         </div>
       );
@@ -97,7 +97,7 @@ export default async function NewTestPage({ searchParams }: PageProps<"/dashboar
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DiscoveryUrlForm defaultUrl={prefill?.ok ? prefill.url : ""} cta={prefill?.ok ? "Start discovery" : "Explore website"} autoFocus={!prefill?.ok} />
+          <DiscoveryUrlForm defaultUrl={prefill?.ok ? prefill.url : ""} cta={prefill?.ok ? "Analyse website" : "Explore website"} autoFocus={!prefill?.ok} />
         </CardContent>
       </Card>
       {websites && websites.length > 0 && (

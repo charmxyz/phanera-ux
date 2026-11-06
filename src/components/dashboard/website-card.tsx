@@ -16,7 +16,7 @@ export function WebsiteCard({ website, testCount, latestTestStatus }: { website:
           </div>
           <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">{website.description ?? website.title ?? "Not yet analysed"}</p>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>{testCount} {testCount === 1 ? "test" : "tests"} · scanned {formatDate(website.last_scanned_at)}</span>
+            <span>{testCount} {testCount === 1 ? "test" : "tests"} · analysed {formatDate(website.last_scanned_at)}</span>
             {latestTestStatus ? <StatusLabel status={latestTestStatus} className="text-xs" /> : <StatusLabel status={website.discovery_status} className="text-xs" />}
           </div>
         </CardContent>

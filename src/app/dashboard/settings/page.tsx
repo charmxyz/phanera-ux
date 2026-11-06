@@ -45,11 +45,11 @@ export default async function SettingsPage({ searchParams }: PageProps<"/dashboa
         </CardHeader>
         <CardContent className="grid gap-4 text-sm">
           <div className="grid gap-2">
-            <div className="flex justify-between"><span>Test runs used</span><span className="font-mono">{usage.used} / {usage.allowance}{usage.period === "month" ? " this month" : " lifetime"}</span></div>
+            <div className="flex justify-between"><span>Usability tests used</span><span className="font-mono">{usage.used} / {usage.allowance}{usage.period === "month" ? " this month" : " lifetime"}</span></div>
             <Progress value={usage.allowance ? (usage.used / usage.allowance) * 100 : 0} className="h-1.5" />
           </div>
           <Row label="Personas per test">{l.personasPerTest}</Row>
-          <Row label="Pages per website scan">{l.pagesPerScan}</Row>
+          <Row label="Pages per website analysis">{l.pagesPerScan}</Row>
           <Row label="Actions per persona">{l.maxActionsPerPersona}</Row>
           <Row label="Time per persona">{l.maxDurationMsPerPersona / 60_000} minutes</Row>
         </CardContent>

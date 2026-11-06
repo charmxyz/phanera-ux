@@ -12,9 +12,9 @@ import { Logo } from "@/components/brand/logo";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, exact: true },
-  { href: "/dashboard/new", label: "New Test", icon: PlusIcon },
+  { href: "/dashboard/new", label: "New usability test", icon: PlusIcon },
   { href: "/dashboard/websites", label: "Websites", icon: GlobeIcon },
-  { href: "/dashboard/tests", label: "Test History", icon: HistoryIcon },
+  { href: "/dashboard/tests", label: "Usability tests", icon: HistoryIcon },
   { href: "/dashboard/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -53,7 +53,7 @@ export function AppSidebar({ email, planLabel, used, allowance, period }: { emai
           </div>
           <Progress value={allowance ? (used / allowance) * 100 : 0} className="h-1" />
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Test runs {period === "lifetime" ? "included" : "this month"}</p>
+            <p className="text-xs text-muted-foreground">Usability tests {period === "lifetime" ? "included" : "this month"}</p>
             {planLabel === "Free" && <Link href="/dashboard/settings#billing" className="text-xs font-medium hover:underline">Upgrade</Link>}
           </div>
         </div>

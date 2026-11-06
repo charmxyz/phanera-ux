@@ -1,1746 +1,566 @@
 # Phanera
-## MVP Product Requirements Document
 
-**Version:** 1.1  
-**Date:** November 2026  
-**Status:** Development specification  
-**Scope:** MVP only  
-**Primary stack:** Next.js, shadcn/ui, Supabase, Resend, Claude API, Daytona
+**Find where visitors get stuck.** Phanera sends simulated visitors (personas) through a live website in real browsers, records every step, and turns what happened into a ranked list of issues with screenshots and suggested fixes.
 
----
+- Product spec: [docs/PRD.md](docs/PRD.md)
+- Step-by-step account setup (Supabase, Resend, Railway, Vercel): [SETUP.md](SETUP.md)
 
-# 1. Product Overview
-
-## 1.1 What is Phanera?
-
-Phanera is an AI-powered platform that explores and evaluates websites using autonomous agents simulating different user personas.
-
-A user provides a website URL. Phanera discovers the website's content, understands the product, generates relevant personas, and sends AI agents to explore the website independently.
-
-These agents attempt realistic tasks, identify friction, and produce evidence-backed findings.
-
-Phanera also checks whether website content and interfaces are accessible and understandable to AI agents.
-
-## 1.2 Product Vision
-
-**See your website through every perspective.**
-
-Phanera helps website owners understand how their websites work for both people and autonomous AI systems.
-
-## 1.3 MVP Goal
-
-Build a functional SaaS in which a new user can:
-
-1. Visit the landing page.
-2. Enter a website URL.
-3. Authenticate using an email magic link.
-4. Arrive at the dashboard with the submitted URL preserved.
-5. Start a website discovery scan.
-6. Review the discovered website and suggested personas.
-7. Launch an AI persona test.
-8. Watch the test progress.
-9. Review session evidence and actionable findings.
-10. Revisit previous reports.
-
-The MVP must execute real browser tests, not return fabricated AI-generated reports.
-
-## 1.4 Non-Goals
-
-The MVP will not include:
-
-- CLI
-- MCP server
-- CI/CD integration
-- Scheduled testing
-- Authenticated target website testing
-- Localhost testing
-- Native mobile application testing
-- Team collaboration
-- Enterprise features
-- Issue tracker integrations
-- Custom AI model selection
-- Dedicated error monitoring
-- Dedicated product analytics
-- Advanced billing and subscription management
-
-These features can be added after the core testing workflow is validated.
+This README is the technical reference: architecture, data model, every pipeline, and how to run and deploy it. It contains no secrets; environment variables are listed by name only.
 
 ---
 
-# 2. Technology Stack
+## Contents
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Application | Next.js App Router | Frontend and API |
-| Language | TypeScript | Full application |
-| Styling | Tailwind CSS | Styling system |
-| UI | shadcn/ui | Components |
-| Icons | Lucide | Interface icons |
-| Animation | Motion | UI transitions |
-| Hero visual | Canvas or WebGL | Animated murmuration |
-| Database | Supabase PostgreSQL | Application data |
-| Authentication | Supabase Auth | Magic-link sessions |
-| Email delivery | Resend | Authentication emails |
-| File storage | Supabase Storage | Screenshots and evidence |
-| AI | Anthropic Claude API | All AI reasoning |
-| Browser | Playwright | Browser automation |
-| Agent interaction | Stagehand with Claude | AI-guided navigation |
-| Sandbox | Daytona | Isolated execution |
-| Jobs | Trigger.dev | Background scan orchestration |
-| Deployment | Vercel | Web hosting |
-
-### Technical Rules
-
-- Use TypeScript throughout.
-- Use the App Router.
-- Prefer Server Components where appropriate.
-- Use shadcn/ui components instead of building custom versions of standard controls.
-- Keep all AI calls on the server.
-- Never expose the Anthropic or Resend API keys to the browser.
-- Use structured AI outputs validated with Zod.
-- Use Supabase Row Level Security.
-- Use isolated browser sandboxes for third-party websites.
-- Ensure long-running tests are not dependent on frontend request lifetimes.
+1. [How it works in one minute](#1-how-it-works-in-one-minute)
+2. [Tech stack](#2-tech-stack)
+3. [Architecture](#3-architecture)
+4. [Repository layout](#4-repository-layout)
+5. [Website discovery pipeline](#5-website-discovery-pipeline)
+6. [Test run pipeline](#6-test-run-pipeline)
+7. [The persona browser agent](#7-the-persona-browser-agent)
+8. [Evaluation and findings](#8-evaluation-and-findings)
+9. [Claude integration](#9-claude-integration)
+10. [Background jobs and the worker](#10-background-jobs-and-the-worker)
+11. [Browser providers](#11-browser-providers)
+12. [Data model](#12-data-model)
+13. [Authentication](#13-authentication)
+14. [Plans, usage and billing](#14-plans-usage-and-billing)
+15. [Public share links](#15-public-share-links)
+16. [Security model](#16-security-model)
+17. [Frontend](#17-frontend)
+18. [Environment variables](#18-environment-variables)
+19. [Local development](#19-local-development)
+20. [Deployment](#20-deployment)
+21. [Operations and troubleshooting](#21-operations-and-troubleshooting)
+22. [Known limitations](#22-known-limitations)
 
 ---
 
-# 3. Brand and Design System
+## 1. How it works in one minute
 
-## 3.1 Brand Concept
-
-Phanera represents the idea of making something visible.
-
-The visual identity is inspired by **murmuration**, a natural phenomenon where large groups of birds move in coordinated patterns.
-
-Each particle represents an individual agent exploring a website.
-
-As agents work, the particles move independently before forming larger patterns that represent shared understanding.
-
-The experience should feel:
-
-- Minimal
-- Intelligent
-- Technical
-- Calm
-- Premium
-- Slightly experimental
-- Interactive without being distracting
-
-## 3.2 Overall Visual Direction
-
-Use a dark interface inspired by modern developer tools and AI SaaS products.
-
-The design should feel native to shadcn/ui, with restrained colour, clean typography, subtle borders, and generous spacing.
-
-Avoid oversized gradients, excessive glow, glassmorphism, and colourful cards.
-
-## 3.3 Colour Palette
-
-| Token | Hex | Usage |
-|---|---|---|
-| Background | `#0B0B10` | Main application background |
-| Surface | `#18181B` | Cards and panels |
-| Elevated | `#222228` | Dialogs and dropdowns |
-| Border | `#303038` | Subtle dividers |
-| Primary | `#6366F1` | Buttons and active actions |
-| Foreground | `#FAFAFA` | Main text |
-| Muted foreground | `#A1A1AA` | Supporting text |
-| Success | `#22C55E` | Successful test results |
-| Warning | `#F59E0B` | Warnings |
-| Destructive | `#EF4444` | Failed states |
-
-### Colour Rules
-
-Primary indigo must primarily appear on:
-
-- Primary CTA buttons
-- Selected interactive states
-- Keyboard focus indicators
-- Active progress indicators
-- Relevant action icons
-
-Do not apply indigo to all cards, section backgrounds, or large decorative surfaces.
-
-The hero murmuration should primarily use neutral white, grey, and muted particles.
-
-## 3.4 Typography
-
-Use **Geist Sans** for the interface.
-
-Use **Geist Mono** for:
-
-- URLs
-- Session identifiers
-- Timestamps
-- Technical metadata
-- Browser action logs
-
-Typography guidelines:
-
-- Large, confident hero heading
-- Clear section titles
-- Compact interface labels
-- Muted supporting text
-- Comfortable spacing
-- No excessive uppercase text
-
-## 3.5 Layout
-
-Use:
-
-- Maximum marketing content width around 1200px
-- Maximum reading width around 720px
-- Responsive 12-column grid
-- 8px spacing system
-- Moderate border radii
-- Thin, low-contrast borders
-- Minimal shadows
-- Generous whitespace
-
-## 3.6 shadcn/ui Components
-
-Use existing shadcn components for:
-
-- Button
-- Input
-- Card
-- Dialog
-- Sheet
-- Tabs
-- Badge
-- Table
-- Skeleton
-- Progress
-- Tooltip
-- Dropdown Menu
-- Alert
-- Separator
-- Sidebar
-- Toast notifications
-- Form controls
-
-Custom components should be reserved for experiences unique to Phanera.
+1. A user pastes a URL. Phanera **discovers** the site: it crawls permitted pages, reads `robots.txt`, the sitemap and `llms.txt`, measures technical signals, and asks Claude to summarise the product, classify pages, suggest test goals and suggest personas.
+2. The user picks a **test goal** (for example "Can a new visitor find pricing?") and up to N **personas**. Every persona attempts the *same* goal; they differ in motivation, behaviour, patience and device.
+3. A background **worker** opens a real Chromium browser. Each persona gets its own isolated browser context and works through the site step by step: Phanera reads the page, takes a screenshot, asks Claude for the next action, performs it, and records the step.
+4. An independent Claude **evaluator** judges each session from the recorded evidence, then a **findings** pass merges everything into ranked, evidence-backed issues and an agent-readiness interpretation.
+5. The user sees a one-page **report**: a verdict, an issue board (Low / Medium / High tickets with fixes), and every persona's session with a journey graph and step replay. The report can be shared through a public, view-only link.
 
 ---
 
-# 4. Murmuration Visual System
+## 2. Tech stack
 
-## 4.1 Hero Animation
-
-The homepage hero contains an animated flock of particles, inspired by a murmuration of starlings.
-
-The particles should create a fluid, organic shape, moving collectively while maintaining individual movement.
-
-### Behaviour
-
-1. On initial load, particles are distributed across the hero area.
-2. Particles gradually form flowing organic patterns.
-3. The collective shape continuously changes.
-4. Cursor movement subtly influences nearby particles.
-5. Particles return to natural motion after interaction.
-6. The animation loops seamlessly.
-
-### Visual Constraints
-
-- Dark background
-- Mostly white and muted grey particles
-- No large coloured gradients
-- No bright particle trails
-- No photographic bird assets required
-- No obvious repeating animation loop
-- No unnecessary motion behind input text
-
-### Technical Requirements
-
-Prefer a performant Canvas or WebGL implementation.
-
-Use requestAnimationFrame only while the animation is active.
-
-Optimise particle count for device capability.
-
-Pause when the page is not visible.
-
-Provide a static visual fallback when reduced motion is enabled.
-
-The animation must not block or delay interaction with the URL field.
-
-## 4.2 Murmuration Throughout the Website
-
-The murmuration concept should extend beyond the homepage without repeating the same animation everywhere.
-
-Examples:
-
-**Homepage Hero**
-
-A large flock introduces the concept.
-
-**How It Works**
-
-Small groups of particles separate to represent independent personas.
-
-**Persona Testing**
-
-Each persona has an individual particle cluster.
-
-**Running Test**
-
-Small animated clusters represent agents currently exploring.
-
-**Completed Report**
-
-Clusters converge into a unified pattern representing the final insights.
-
-**Empty States**
-
-Small, static particle illustrations provide continuity.
-
-Avoid full-screen animations inside the dashboard.
-
----
-
-# 5. Information Architecture
-
-## 5.1 Public Routes
-
-| Route | Page |
+| Area | Technology |
 |---|---|
-| `/` | Landing page |
-| `/pricing` | Pricing |
-| `/login` | Magic-link login |
-| `/auth/callback` | Authentication callback |
+| Web framework | Next.js 16 (App Router, Turbopack, Cache Components / Partial Prerendering, `proxy.ts`), React 19, TypeScript |
+| UI | Tailwind CSS v4, shadcn/ui on Base UI, lucide-react icons, sonner toasts |
+| 3D / illustration | three.js + @react-three/fiber + drei (voxel hero flower, marching ants), hand-built isometric SVG (how-it-works, environments) |
+| Graphs | @xyflow/react (React Flow) for the per-session user-journey graph |
+| Database, auth, storage | Supabase (Postgres with Row Level Security, Auth magic links, Storage) |
+| Transactional email | Resend, as Supabase Auth's custom SMTP provider |
+| AI | Anthropic Claude via `@anthropic-ai/sdk` (structured outputs with Zod) |
+| Browser automation | `playwright-core` 1.64 driving Chromium |
+| Background jobs | Standalone Node worker (Railway, Docker) polling Postgres; optional Trigger.dev; in-process fallback in dev |
+| Billing | Stripe (Checkout, Billing Portal, webhooks) and PayPal Subscriptions (REST API, webhooks) |
+| Validation | Zod 4 |
+| Package manager | pnpm |
 
-For the MVP, Product, How It Works, and FAQ can be sections on the landing page instead of separate pages.
+---
 
-## 5.2 Protected Routes
+## 3. Architecture
 
-| Route | Page |
+```mermaid
+flowchart LR
+  subgraph Browser
+    U[User]
+    V[Public viewer]
+  end
+  subgraph Vercel["Vercel (Next.js)"]
+    P[Pages + Server Actions]
+    WH[Stripe / PayPal webhooks]
+    R["/r/[token] share pages"]
+  end
+  subgraph Supabase
+    DB[(Postgres + RLS)]
+    AU[Auth]
+    ST[(Storage: evidence)]
+  end
+  subgraph Railway["Railway (worker container)"]
+    W[scripts/worker.ts]
+    CH[Chromium]
+  end
+  C[Claude API]
+  S[Stripe / PayPal]
+
+  U --> P
+  V --> R
+  P <--> DB
+  P <--> AU
+  R --> DB
+  P -->|queue job: status=queued| DB
+  W -->|poll + claim| DB
+  W --> CH -->|browses| Site[(Target website)]
+  W --> C
+  W --> ST
+  W --> DB
+  P --> S --> WH --> DB
+```
+
+Key design decisions:
+
+- **The web app never runs long jobs.** Server actions validate input, reserve usage, write rows with `status = 'queued'` and return. A separate worker process claims and executes the job. Status and progress are written back to Postgres, and the UI polls via `router.refresh()`.
+- **Clients only read.** Every table has RLS allowing an authenticated user to `SELECT` their own rows. All writes go through trusted server code using the Supabase service role, after verifying the user.
+- **Everything is evidence-based.** Each agent step is stored with its URL, action, reasoning, observation and (optionally) a screenshot; the evaluator and findings writer only reason over that recorded evidence.
+
+---
+
+## 4. Repository layout
+
+```
+.
+├── Dockerfile.worker            # Worker image (Playwright base image + pnpm)
+├── railway.json                 # Railway: build Dockerfile.worker, restart always
+├── trigger.config.ts            # Optional Trigger.dev config (Playwright build extension)
+├── scripts/
+│   ├── worker.ts                # Job worker: poll, claim, run, heartbeat recovery, sweeps
+│   ├── paypal-setup.mjs         # One-time: create PayPal product + monthly plan
+│   ├── smoke-discovery.ts       # Manual smoke test for discovery
+│   └── smoke-browser.ts         # Manual smoke test for the browser provider
+├── supabase/migrations/         # SQL migrations (run in order)
+├── docs/PRD.md                  # Product requirements
+├── SETUP.md                     # Account/service setup guide
+└── src/
+    ├── proxy.ts                 # Session refresh + /dashboard protection
+    ├── app/
+    │   ├── (marketing)/         # Home, pricing, privacy, terms
+    │   ├── login/               # Magic-link sign-in
+    │   ├── auth/callback|signout
+    │   ├── dashboard/           # Authenticated app (websites, tests, sessions, settings)
+    │   │   └── billing/stripe|paypal/route.ts   # Return-from-checkout handlers
+    │   ├── r/[token]/           # Public, view-only shared report
+    │   ├── api/stripe/webhook   # Stripe webhook
+    │   ├── api/paypal/webhook   # PayPal webhook
+    │   └── actions/             # Server actions: auth, dashboard, billing, share
+    ├── components/
+    │   ├── ui/                  # shadcn/ui primitives
+    │   ├── landing/             # Marketing sections; voxel flower/ants; iso SVG scenes
+    │   ├── report/              # One-page report: summary, issue board, sessions, share
+    │   ├── sessions/            # Replay, journey graph, agent report, status labels
+    │   ├── dashboard/           # Sidebar, wizard, stop button, page header…
+    │   ├── billing/             # Plan & billing card
+    │   ├── ants/ brand/ voxel/  # Pixel ant sprites, logo, WebGL helpers
+    │   └── personas/ findings/ auth/
+    ├── lib/
+    │   ├── agents/              # run-test, persona-agent, stop/recovery
+    │   ├── discovery/           # crawl + run (discovery pipeline)
+    │   ├── evaluation/          # session evaluation + findings synthesis
+    │   ├── claude/              # client, prompts, Zod schemas
+    │   ├── daytona/browser.ts   # Browser acquisition + reachability probe
+    │   ├── jobs/dispatch.ts     # Where queued jobs run (worker / Trigger / in-process)
+    │   ├── billing/             # Stripe, PayPal, provider-neutral sync
+    │   ├── usage/               # Plan limits, effective plan, usage accounting
+    │   ├── share/               # Shared-report loader
+    │   ├── supabase/            # Server, browser, admin (service role) clients; proxy helper
+    │   ├── auth/                # Pending sign-in intents, optional user
+    │   ├── validation/          # URL normalisation, SSRF-safe fetch
+    │   ├── dashboard/           # Request-scoped queries, formatters
+    │   └── env.ts               # Server-only environment access
+    ├── trigger/tasks.ts         # Trigger.dev task definitions (optional runner)
+    └── types/database.ts        # Hand-written DB row types
+```
+
+---
+
+## 5. Website discovery pipeline
+
+Entry: `startDiscovery` server action → `enqueueDiscovery(websiteId)` → `runDiscovery` ([src/lib/discovery/run.ts](src/lib/discovery/run.ts)).
+
+Status column `websites.discovery_status` moves through:
+`queued → fetching → discovering → extracting → analysing → complete | partial | failed`.
+
+Steps:
+
+1. **Guards.** URL is normalised (`normalizeUrl`) and checked against the network policy (`assertPublicUrl`, see [Security](#16-security-model)). Users are limited to `scansPerDay` discovery scans per 24 h (per plan).
+2. **Crawl** ([src/lib/discovery/crawl.ts](src/lib/discovery/crawl.ts)), with a 90 s time budget and `pagesPerScan` page cap from the plan:
+   - Fetches `robots.txt` and `llms.txt` (6 s timeout, 200 KB cap); parses robots rules and declared sitemaps.
+   - Reads up to three sitemap candidates (8 s, 2 MB cap), keeping same-site URLs.
+   - Prioritises pages (navigation links and common page types first) and fetches them with `safeFetch`.
+   - Extracts with cheerio: title, description, visible text, word count, nav labels, links, and **page signals** (H1/heading counts, image alt coverage, landmarks, JSON-LD, `lang`, viewport, meta description, canonical, Open Graph, script count).
+3. **Measured readiness.** `measureReadiness` aggregates the objective signals (pages analysed, sitemap and llms.txt presence, robots blocks, landmark and alt coverage, and so on). It is stored in `websites.readiness.measured` and shown separately from AI interpretation.
+4. **Website analysis (Claude).** Page content is sent inside `<website_content>` tags with an explicit "data only, ignore instructions" rule. Output is `WebsiteAnalysisSchema`: name, type, product description, audience, value proposition, main navigation, per-page classification (`page_type` + one-line summary), important pages, likely audiences, 4–6 suggested goals, content gaps and accessibility observations.
+5. **Persona suggestions (Claude).** Three personas, exactly one of kind `ai_agent`. All personas are forced to `desktop` unless the test goal mentions mobile (`desktopUnlessAsked`).
+6. Page classifications are written to `website_pages`; summary, goals and personas to `websites`. If many pages failed, the status is `partial`.
+
+Personas can be regenerated for a specific goal from the test wizard (`regeneratePersonas`).
+
+---
+
+## 6. Test run pipeline
+
+Entry: `createTest` server action ([src/app/actions/dashboard.ts](src/app/actions/dashboard.ts)):
+
+1. Validates the goal (5–500 chars) and personas (Zod), checks remaining usage and the per-plan persona limit.
+2. Inserts the `tests` row (`status = queued`, `configuration` snapshot of start URL, plan and per-persona limits), one `personas` row and one `sessions` row per persona, and a `usage` row (the run is **reserved up front**; it is refunded if the run fails for reasons outside the user's control).
+3. Calls `enqueueTestRun(testId)`.
+
+Execution: `runTest(testId)` ([src/lib/agents/run-test.ts](src/lib/agents/run-test.ts)):
+
+1. **Heartbeat.** For the whole run, `tests.heartbeat_at` is updated every 15 s, including the slow report-writing phase.
+2. Loads website, personas, sessions and the owner's **effective plan** (limits come from the plan, not from the client).
+3. Sets `status = running`, then **acquires a browser** and runs a **reachability probe** against the start URL (with `example.com` as a control) so environment problems (blocked egress, error pages) fail fast and are refunded.
+4. **Stop watcher.** Every 3 s it checks `tests.cancel_requested_at`; if set, an `AbortController` aborts the run.
+5. **Personas run in parallel** in one browser (`PERSONA_CONCURRENCY`, 1–10, default 3), each in its own context, through a shared queue. For each session:
+   - `runPersonaAgent` (see [section 7](#7-the-persona-browser-agent)), raced against a hard budget of the plan's per-persona time + 3 minutes.
+   - If stopped: session marked `failed` with "Stopped before this persona finished", skipped.
+   - Otherwise `evaluateSession` (see [section 8](#8-evaluation-and-findings)), then the session row is completed with outcome, evaluation JSON, agent summary, duration and action count. A run that errored on its first step is treated as an environment failure.
+6. If no session produced a usable evaluation, the test fails and usage is refunded.
+7. Otherwise `status = evaluating`, `synthesiseFindings` writes `findings` rows and the test `summary` (conclusion, top fixes, readiness interpretation, outcome counts), and the test ends `complete` (or `partial` if some sessions failed or the user stopped it early).
+8. Every final status write is conditional on the test still being `running`/`evaluating`, so a force-stopped test is never overwritten.
+
+---
+
+## 7. The persona browser agent
+
+[src/lib/agents/persona-agent.ts](src/lib/agents/persona-agent.ts)
+
+**Context per persona.** `browser.newContext` with the device profile (desktop 1366×860; mobile 390×844, touch, iPhone user agent), downloads disabled and service workers blocked. A route guard (`guardContext`) aborts:
+- main-frame navigations to other sites, and any non-GET main-frame navigation (no form submissions that change data);
+- requests to private/loopback ranges and non-HTTP(S)/data/blob schemes.
+
+Dialogs are auto-dismissed.
+
+**Start.** Opens the start URL (`domcontentloaded`, 30 s), waits briefly for network idle, takes a screenshot and records step 0. If the page never loaded (`about:blank` / `chrome-error:`), the session ends as an environment error.
+
+**Loop** (up to `maxActionsPerPersona`, within `maxDurationMsPerPersona`):
+
+1. **Snapshot** (bounded 15 s): tags up to 150 visible interactive elements (`a[href]`, buttons, inputs, selects, textareas, `summary`, ARIA roles, `[onclick]`) with `data-phanera-ref`, and captures their tag, role, accessible text, href and whether they are in view, plus ~3,500 chars of visible text and the title.
+2. **Screenshot** (JPEG q60, bounded 10–12 s).
+3. **Decide** (Claude, bounded 75 s per attempt, 1 retry, abortable): the model receives the screenshot, URL, title, its action history and the element list, and returns `AgentStepSchema`: `observation`, `reasoning`, `action`, `element_ref`, `value`, `progress_note`, `final_report`. The persona prompt gives it the shared test goal, its motivation and behaviour, the action budget and safety rules.
+4. **Act.** Actions: `click`, `type`, `select`, `scroll_down`, `scroll_up`, `go_back`, `navigate` (same-site only), `finish`, `give_up`.
+   - **Robust click.** Re-resolves the element if the site re-rendered (falls back from the ref to role + accessible name, then visible text). Tries a normal click; if that fails, checks what covers the element's centre. If something covers it, the cover is reported ("a visitor clicking it would hit that instead") and the element is clicked directly. Otherwise it tries a forced click, then a DOM click, then (for links) opening the href.
+   - After a click it compares a page fingerprint (URL, text length, open/expanded elements). "Clicked, but nothing on the page visibly changed" is recorded as a real UX signal.
+   - Failures of the automation itself are prefixed `Agent tooling:` so they are never mistaken for website defects.
+5. **Record** (bounded 20 s): screenshot uploaded to Storage at `evidence/<user_id>/<session_id>/<step>.jpg` (every step on Startup, key steps on Free: step 0, URL changes, errors, finish), and a `session_events` row inserted.
+6. Progress (`sessions.current_activity`, `action_count`) is updated so the UI can show "Reading the page" or "Thinking about step N".
+
+**Watchdog.** If the session overruns its time budget by 60 s, or the user stops the test, the context is closed so any in-flight browser call fails instead of hanging. Endings: `finished`, `gave_up`, `action_limit`, `time_limit`, `stopped`, `error`.
+
+**Logs.** One line per step in the worker logs, with look, decide and act timings.
+
+---
+
+## 8. Evaluation and findings
+
+[src/lib/evaluation/evaluate.ts](src/lib/evaluation/evaluate.ts)
+
+**Session evaluation** (`evaluateSession`, effort `medium`, 3 min timeout). An independent evaluator that did not perform the session receives the persona, the test goal, known website facts, how the session ended, the agent's own (unverified) final report, the recorded steps, and up to four sampled screenshots (always including the last). Output `SessionEvaluationSchema`:
+
+| Field | Meaning |
 |---|---|
-| `/dashboard` | Dashboard |
-| `/dashboard/new` | Create test |
-| `/dashboard/websites/[id]` | Website overview |
-| `/dashboard/tests/[id]` | Test detail |
-| `/dashboard/tests/[id]/sessions/[id]` | Agent session |
-| `/dashboard/settings` | Account settings |
+| `outcome` | `success`, `partial_success`, `failed`, `abandoned`, `blocked`, `inconclusive` |
+| `summary` | One sentence (≤20 words) verdict |
+| `key_points` | 2–4 short facts behind the verdict |
+| `rationale` | ≤2 sentences of reasoning |
+| `cause` | `website`, `agent`, `environment`, `none` |
+| `observations[]` | Problems only: step, issue, `is_website_issue`, `directly_observed` |
 
-All dashboard routes require a valid session.
+**Findings synthesis** (`synthesiseFindings`, effort `high`, 5 min timeout). Input: test goal, website facts, measured readiness, and every usable session (persona, motivation, ending, evaluation, steps). Output `FindingsReportSchema`: a short conclusion, `findings[]` (title, description, category, severity, confidence, impacted personas, page URL, evidence with persona and step, recommendation), `top_fixes`, and `readiness_interpretation` for six areas (content accessibility, page discovery, semantic navigation, content comprehension, rendering, structured information).
+
+Rules enforced in the prompts:
+- Every persona shares the same goal; motivation only explains *how* they browsed.
+- Browser-automation errors (timeouts, "not found", `Agent tooling:`) are never website issues unless the evidence shows the site failing.
+- Findings are problems only, never strengths. Focus: user experience and behaviour, content strategy, and verified functional bugs.
+- Severity: critical (essential task blocked), high, medium, low. Confidence: `confirmed` only with direct step or screenshot evidence; the code downgrades a "confirmed" finding with no step evidence to `likely`.
+- Short, concrete writing with per-field length limits.
 
 ---
 
-# 6. Landing Page Requirements
-
-## 6.1 Reference
-
-Use https://www.useswarm.co/ as a reference for:
-
-- Content hierarchy
-- Product storytelling
-- Demonstration-led sections
-- Persona examples
-- Results presentation
-- Pricing structure
-- Clear calls to action
-
-Do not duplicate Swarm's branding, artwork, written copy, or individual interface designs.
-
-Phanera must have its own messaging, visual language, and component composition.
-
-## 6.2 Homepage Navigation
-
-**Left:**
-- Phanera logo
-
-**Right:**
-- Product
-- How It Works
-- Pricing
-- Log in
-- Get Started
-
-Navigation items scroll to relevant sections where appropriate.
-
-The navigation should remain simple and responsive.
-
-## 6.3 Section 1: Hero
-
-### Headline
-
-**See your website through every perspective.**
-
-### Description
-
-Send autonomous AI personas to explore your website, discover friction, and reveal what humans and AI agents might miss.
-
-### Primary Input
-
-Placeholder:
-
-`https://yourwebsite.com`
-
-### Button
-
-**Explore my website**
-
-### Interaction
-
-- User enters a URL.
-- Client validates the basic URL format.
-- If the URL has no scheme, automatically normalise it to HTTPS.
-- User clicks Explore.
-- If authenticated, navigate to `/dashboard/new` with the URL prefilled.
-- If unauthenticated, open the login dialog with the submitted URL preserved.
-
-The homepage must not start a paid or computationally expensive test before authentication.
-
-### Visual
-
-Animated murmuration positioned above or behind the headline, without reducing text legibility.
-
-## 6.4 Section 2: How Phanera Works
-
-### Heading
-
-**One website. Many perspectives.**
-
-### Description
-
-Phanera explores your website through different personas, then brings their experiences together into one clear report.
-
-Display three steps.
-
-**Step 1: Discover your website**
-
-Phanera maps your pages, understands your product, and identifies what visitors are likely trying to accomplish.
-
-Visual: Website pages being discovered and organised.
-
-**Step 2: Release the flock**
-
-AI personas independently navigate your website, attempt tasks, and record what happens.
-
-Visual: Three or more persona cards with individual progress states.
-
-**Step 3: Reveal the findings**
-
-See where agents succeeded, what blocked them, and which issues deserve attention.
-
-Visual: A report with ranked findings and linked evidence.
-
-## 6.5 Section 3: AI Personas
-
-### Heading
-
-**Different visitors. Different experiences.**
-
-### Description
-
-Not everyone explores a website the same way. Phanera generates personas with different goals, behaviours, and levels of familiarity.
-
-Show example persona cards:
-
-**Alex, First-time visitor**
-
-Goal: Understand what the product does.
-
-Behaviour: Skims content and expects simple explanations.
-
-**Sam, Potential customer**
-
-Goal: Compare plans and find pricing.
-
-Behaviour: Detail-oriented and price-conscious.
-
-**Taylor, Technical evaluator**
-
-Goal: Identify integrations and technical requirements.
-
-Behaviour: Searches for documentation and precise information.
-
-**Morgan, AI assistant**
-
-Goal: Extract reliable product information.
-
-Behaviour: Prioritises structured, accessible and consistent content.
-
-The persona cards are examples and must not imply real users participated in testing.
-
-## 6.6 Section 4: Session Evidence
-
-### Heading
-
-**See where they get stuck.**
-
-### Description
-
-Follow each persona's journey through your website, including the pages they visited, actions they took, and problems they encountered.
-
-Display an illustrative session interface containing:
-
-- Browser preview
-- Persona name
-- Task
-- Progress
-- Screenshot
-- Action timeline
-- Final outcome
-
-The demo should be clearly identified as illustrative until real test recordings are available.
-
-## 6.7 Section 5: Findings
-
-### Heading
-
-**Findings you can actually fix.**
-
-### Description
-
-Turn agent sessions into clear, prioritised recommendations backed by evidence.
-
-Show an example findings panel:
-
-**High**
-Pricing page is difficult to discover.
-
-**Medium**
-Product features use inconsistent terminology.
-
-**Low**
-Primary action is less prominent on mobile.
-
-Each finding preview should include:
-
-- Severity
-- Short description
-- Impacted personas
-- Suggested improvement
-
-## 6.8 Section 6: AI Agent Readiness
-
-### Heading
-
-**Built for people. Ready for agents.**
-
-### Description
-
-Your website is increasingly explored by autonomous AI systems. Phanera checks whether agents can discover your pages, interpret your content, and navigate important interactions.
-
-Highlight:
-
-- Content discovery
-- Semantic HTML
-- Navigation accessibility
-- Product comprehension
-- Agent interaction
-
-This is Phanera's core differentiator.
-
-## 6.9 Section 7: Pricing
-
-Display three tiers.
-
-### Free
-
-**£0/month**
-
-- 5 lifetime test runs
-- Up to 3 personas per run
-- 10 pages per website scan
-- Basic findings
-- Shareable report
-
-CTA: Start for free
-
-### Startup
-
-**£99/month**
-
-- 40 snapshot audits per month
-- 10 live browser tests per month
-- Up to 10 personas per live run
-- 50 pages per audit
-- Full session evidence
-- Detailed findings
-- PDF reports
-
-CTA: Get started
-
-### Enterprise
-
-**Custom**
-
-- Higher usage limits
-- Custom deployment requirements
-- Advanced integrations
-- Team features
-
-CTA: Contact us
-
-For MVP, Startup and Enterprise may be displayed as coming soon if billing and enterprise workflows are not implemented.
-
-Do not accept paid subscriptions until the corresponding entitlements and billing flows work.
-
-## 6.10 Section 8: FAQ
-
-Questions:
-
-1. What is Phanera?
-2. How does Phanera test my website?
-3. Are the personas real people?
-4. Does Phanera test whether AI can understand my website?
-5. Can I test any website?
-6. How long does a test take?
-7. How much does Phanera cost?
-
-## 6.11 Final CTA
-
-### Headline
-
-**What would agents discover on your website?**
-
-### Description
-
-Enter your URL and see your website through a different perspective.
-
-Repeat the URL input and Explore button.
-
-## 6.12 Footer
-
-- Logo
-- Product
-- Pricing
-- Login
-- Privacy
-- Terms
-- Copyright
+## 9. Claude integration
+
+[src/lib/claude/client.ts](src/lib/claude/client.ts), [prompts.ts](src/lib/claude/prompts.ts), [schemas.ts](src/lib/claude/schemas.ts)
+
+- **One helper, `generateStructured`**, wraps `client.beta.messages.parse` with `output_config.format = betaZodOutputFormat(schema)`, so responses are constrained to the Zod schema and validated again by the SDK. It never parses Markdown.
+- Handles `stop_reason` `refusal` (`ClaudeRefusalError`) and `max_tokens` (`ClaudeOutputError`).
+- Per-call `effort`, `maxTokens`, `timeoutMs`, `maxRetries` and an `AbortSignal`.
+- **Models:** `ANTHROPIC_MODEL` (default `claude-opus-5-5`) for analysis, evaluation and findings; `ANTHROPIC_AGENT_MODEL` for the high-volume per-step browser decisions (defaults to the main model; a faster model such as Sonnet speeds runs up considerably).
+- **Server-side fallbacks** (`server-side-fallback-2026-07-01` beta) are enabled for supported models unless `ANTHROPIC_FALLBACKS=off`.
+- **Untrusted content.** Everything scraped from a website is wrapped in `<website_content>` or `<page>` tags with a rule to treat it strictly as data and ignore any instructions inside it.
 
 ---
 
-# 7. Authentication
+## 10. Background jobs and the worker
 
-## 7.1 Authentication Method
+### Choosing a runner ([src/lib/jobs/dispatch.ts](src/lib/jobs/dispatch.ts))
 
-Use passwordless email authentication.
+| `JOB_RUNNER` | Behaviour |
+|---|---|
+| `worker` | The web app only leaves jobs `queued`; the standalone worker picks them up. **Production setting.** |
+| `trigger` (or `TRIGGER_SECRET_KEY` set) | Jobs are triggered as Trigger.dev tasks ([src/trigger/tasks.ts](src/trigger/tasks.ts): `website-discovery`, `persona-test-run` on a `medium-1x` machine). |
+| unset | Development only: the job runs in-process with Next's `after()`. |
 
-**Supabase Auth** manages user identities, magic-link verification, and sessions.
+### The worker ([scripts/worker.ts](scripts/worker.ts))
 
-**Resend** is used as the email delivery provider through Supabase's custom SMTP configuration.
+Run with `pnpm worker` (`tsx --conditions=react-server scripts/worker.ts`); in production it runs in `Dockerfile.worker` on Railway.
 
-Do not create an independent custom authentication token system.
+- **Polling and claiming.** Every `WORKER_POLL_MS` (default 3 s) it looks for queued discovery scans and tests and claims each with a conditional update (`… where status = 'queued'`), so several worker replicas never run the same job. Concurrency caps: `WORKER_MAX_TESTS` (image default 2) and `WORKER_MAX_DISCOVERIES` (default 2).
+- **Health log** every minute: running tests, Node RSS, and system free/total memory.
+- **Orphan recovery.** A `running`/`evaluating` test whose heartbeat is older than 2 minutes lost its worker (crash, out of memory, redeploy). The first time, it is reset (events and findings deleted, sessions re-queued) and queued again, and `attempts` increments. A second orphaning fails it and refunds usage (`recoverOrphanedTest`, max 2 attempts).
+- **Stop requests the job never picked up** (older than 2 minutes) are force-stopped.
+- **Hard ceilings:** tests running over 75 minutes and discoveries over 15 minutes are failed (tests refunded).
+- **Graceful shutdown** (SIGTERM/SIGINT): stops claiming, waits up to 20 s, then hands any still-running tests straight back to the queue *without* using up a retry, so a redeploy restarts them immediately.
 
-## 7.2 Authentication Flow
+### Stopping a test
 
-### Scenario A: Visitor Submits URL
-
-1. Visitor opens `/`.
-2. Visitor enters a website URL.
-3. Visitor clicks Explore my website.
-4. Application normalises and validates the URL.
-5. Application determines the visitor is not authenticated.
-6. Login dialog opens.
-7. The submitted URL is preserved.
-8. Visitor enters their email.
-9. Visitor clicks Send magic link.
-10. Supabase initiates passwordless authentication.
-11. Resend delivers the email.
-12. User opens the magic link.
-13. Authentication callback verifies the session.
-14. Application creates the user profile if necessary.
-15. Session cookies are established.
-16. User is redirected to `/dashboard/new`.
-17. Previously submitted website URL is prefilled.
-
-### Scenario B: Existing User
-
-1. User opens the homepage.
-2. User enters a URL.
-3. User clicks Explore.
-4. Existing Supabase session is detected.
-5. User goes directly to `/dashboard/new`.
-6. URL remains prefilled.
-
-### Scenario C: Login Without URL
-
-1. User clicks Log in.
-2. Login page or dialog opens.
-3. User enters email.
-4. Magic link is sent.
-5. User verifies authentication.
-6. User is redirected to `/dashboard`.
-
-## 7.3 Login UI
-
-Use a shadcn Dialog when authentication starts from the homepage.
-
-### Title
-
-**Continue with email**
-
-### Description
-
-Enter your email and we'll send you a secure sign-in link.
-
-### Fields
-
-Email address
-
-### Primary Button
-
-**Send magic link**
-
-### Secondary Information
-
-No password needed.
-
-## 7.4 Email Sent State
-
-After successful submission:
-
-### Title
-
-**Check your inbox**
-
-### Description
-
-We sent a sign-in link to your email. Open it to continue to Phanera.
-
-Include:
-
-- Masked or submitted email
-- Resend link action
-- Change email action
-
-Apply a cooldown before allowing the user to request another link.
-
-## 7.5 Magic-Link Requirements
-
-- Links must be single-use.
-- Links must expire.
-- Authentication must occur server-side.
-- The callback must validate the authentication token.
-- Redirects must only target allowed application routes.
-- Authentication requests must be rate limited.
-- UI responses must not reveal whether an email already has an account.
-- Cookies must use secure settings in production.
-
-## 7.6 Cookie Persistence
-
-Use Supabase's supported SSR authentication approach.
-
-Requirements:
-
-- Persist sessions using secure cookies.
-- Enable `HttpOnly` where compatible with the selected session strategy.
-- Use `Secure` in production.
-- Use appropriate `SameSite` settings.
-- Refresh sessions through the supported Supabase server-side flow.
-- Validate user sessions when accessing protected routes.
-- Never store raw authentication tokens in application database tables.
-- Never rely on localStorage as the sole authentication mechanism.
-- Logout must invalidate the session and clear relevant browser cookies.
-
-An authenticated user should remain signed in across browser refreshes and subsequent visits until the session expires or is revoked.
-
-## 7.7 Preserving the Submitted URL
-
-The website URL must survive the email authentication process, including when the user opens the magic link in another browser tab.
-
-Recommended approach:
-
-1. Create a short-lived pending-intent record or signed server-side state reference.
-2. Store the normalised website URL against that reference.
-3. Include a safe opaque state identifier in the authentication redirect.
-4. After authentication, validate and resolve the pending intent.
-5. Redirect to the new test page with the URL restored.
-6. Expire or consume the pending state appropriately.
-
-Do not rely exclusively on client component state or localStorage.
-
-## 7.8 User Profile
-
-Create a profile after first successful authentication.
-
-Fields:
-
-- User ID
-- Email
-- Created at
-- Updated at
-- Plan
-- Remaining trial usage
-
-No password field is required.
+`stopTest` server action and the **Stop test** button:
+- **Queued test:** stopped outright and refunded.
+- **Running test:** sets `cancel_requested_at`. The worker notices within about 3 s, stops the remaining personas and still writes a report from the ones that finished (or fails and refunds if none finished).
+- **Unresponsive worker:** after 60 s the button becomes **Force stop**, which marks unfinished sessions stopped directly (`forceStopTest`).
 
 ---
 
-# 8. Dashboard
+## 11. Browser providers
 
-## 8.1 Dashboard Layout
+[src/lib/daytona/browser.ts](src/lib/daytona/browser.ts): `acquireBrowser()` picks, in order:
 
-Use the shadcn Sidebar pattern.
+1. `BROWSER_PROVIDER=local`: local headless Chromium (used by the worker image; launched with `--disable-dev-shm-usage`).
+2. `BROWSER_PROVIDER=daytona`, or a Daytona API key present: a Daytona sandbox running Chromium, connected over CDP.
+3. Inside a deployed Trigger.dev run: local Chromium installed by the Playwright build extension.
+4. Development with `ALLOW_LOCAL_BROWSER=true`: local Chromium (never in production).
 
-### Sidebar
-
-- Phanera logo
-- Dashboard
-- New Test
-- Websites
-- Test History
-- Settings
-
-### Bottom
-
-- User email
-- Plan label
-- Remaining usage
-- Sign out
-
-## 8.2 Dashboard Home
-
-### Header
-
-**Your dashboard**
-
-Supporting text:
-
-Explore your websites, manage tests, and review findings.
-
-### Main CTA
-
-**New test**
-
-### Main Content
-
-- Website cards
-- Recent tests
-- Total completed tests
-- Remaining trial usage
-- Recent findings
-
-## 8.3 New User Empty State
-
-If the user signed in without submitting a website:
-
-**Start with your website.**
-
-Enter a URL to discover how AI personas experience your product.
-
-Input: Website URL
-
-CTA: Explore website
-
-## 8.4 Returning User
-
-Show previously added websites and recent reports.
-
-Each website card displays:
-
-- Domain
-- Favicon, if available
-- Last scan date
-- Number of tests
-- Latest test status
-
-Selecting a website opens its overview.
+`assertBrowserCanReach` probes the target and a control site and recognises Chrome error pages and egress-restricted sandboxes, so infrastructure failures are reported (and refunded) rather than blamed on the website.
 
 ---
 
-# 9. Website Discovery
+## 12. Data model
 
-## 9.1 Trigger
+Migrations in [supabase/migrations](supabase/migrations), applied in filename order:
 
-Website discovery starts after the user confirms a URL in the dashboard.
+| Migration | Adds |
+|---|---|
+| `20261102000000_init.sql` | All core tables, indexes, RLS policies, `handle_new_user` trigger, private `evidence` bucket |
+| `20261105000000_session_event_observation.sql` | `session_events.observation` |
+| `20261106000000_billing.sql` | Billing columns on `profiles` |
+| `20261106010000_test_share_links.sql` | `tests.share_token`, `tests.shared_at` |
+| `20261106020000_test_cancellation.sql` | `tests.cancel_requested_at` |
+| `20261106030000_test_heartbeat.sql` | `tests.heartbeat_at`, `tests.attempts` |
 
-The submitted homepage URL must not automatically consume a live persona test allowance before confirmation.
+### Tables
 
-## 9.2 Discovery Process
+| Table | Purpose and key columns |
+|---|---|
+| `profiles` | One per auth user (created by the `on_auth_user_created` trigger). `plan` (`free`/`startup`), `billing_provider` (`stripe`/`paypal`/`comp`), `stripe_customer_id`, `subscription_id`, `subscription_status`, `current_period_end`, `cancel_at_period_end` |
+| `websites` | Per user per domain (`unique(user_id, domain)`). `url`, `domain`, `title`, `discovery_status`, `discovery_error`, `summary` (analysis JSON), `readiness` (`{ measured }`), `suggested_goals`, `suggested_personas`, `last_scanned_at` |
+| `website_pages` | Crawled pages: `url`, `title`, `page_type`, `content_summary`, `crawl_status`, `word_count` |
+| `tests` | `title`, `goal`, `status` (`queued`/`running`/`evaluating`/`complete`/`partial`/`failed`), `configuration` (start URL and plan limits snapshot), `summary`, `error`, `started_at`, `completed_at`, `share_token`, `shared_at`, `cancel_requested_at`, `heartbeat_at`, `attempts` |
+| `personas` | Per test: `name`, `role`, `goal` (stores the persona's **motivation**), `configuration` (kind, context, device, behaviour, patience, success criteria) |
+| `sessions` | One per persona run: `status` (`queued`/`running`/`completed`/`failed`), `outcome`, `duration_ms`, `action_count`, `current_activity`, `agent_summary`, `evaluation` (JSON), `error`, timestamps |
+| `session_events` | One per step: `step`, `action`, `target`, `url`, `result`, `reasoning`, `observation`, `screenshot_path`, `error`, `timestamp` |
+| `findings` | `title`, `description`, `category`, `severity`, `confidence`, `impacted_personas[]`, `page_url`, `evidence` (JSON: persona, step, note), `recommendation` |
+| `usage` | Ledger rows: `usage_type` (`test_run`, `discovery_scan`), `quantity`, optional `test_id` (used for refunds) |
+| `pending_auth_intents` | Hashed one-time tokens linking a URL typed before sign-in to the account after sign-in. Service role only (no policies) |
 
-1. Validate URL.
-2. Check basic website reachability.
-3. Read permitted sitemap information.
-4. Discover internal pages.
-5. Extract HTML content.
-6. Render JavaScript when necessary.
-7. Extract structured text and navigation.
-8. Classify website pages.
-9. Generate a website summary using Claude.
-10. Identify likely user audiences.
-11. Suggest meaningful test goals.
+### Row Level Security and storage
 
-## 9.3 Discovery Limits
-
-Free:
-- Maximum 10 pages
-
-Startup:
-- Maximum 50 pages
-
-Respect per-run page and time budgets.
-
-If a site exceeds the limit, prioritise the homepage, primary navigation and high-value pages.
-
-## 9.4 Website Summary
-
-The discovery report contains:
-
-- Website name
-- Website type
-- Product description
-- Main audience
-- Primary value proposition
-- Main navigation
-- Important pages
-- Suggested user goals
-- Content gaps
-- Accessibility observations
-
-The user can review this summary before starting a persona test.
-
-## 9.5 Discovery Status
-
-- Queued
-- Fetching website
-- Discovering pages
-- Extracting content
-- Analysing website
-- Complete
-- Partial
-- Failed
-
-Show progress in the dashboard.
+- Every table has RLS enabled. Authenticated users have **SELECT-only** policies on their own rows (`user_id = auth.uid()`). There are no client INSERT, UPDATE or DELETE policies.
+- `pending_auth_intents` has no policies at all (service role only).
+- Storage bucket `evidence` is private. Objects live under `<user_id>/…`; users can read their own folder. The app serves screenshots through 1-hour signed URLs.
 
 ---
 
-# 10. Persona Generation
+## 13. Authentication
 
-## 10.1 AI Provider
-
-Use Anthropic Claude API for all AI-powered functions.
-
-This includes:
-
-- Website summarisation
-- Page classification
-- Persona generation
-- Task suggestions
-- Agent reasoning
-- Session evaluation
-- Findings generation
-- Recommendations
-
-Model selection should be configured through environment variables, not hardcoded throughout the codebase.
-
-Use structured responses validated through Zod.
-
-## 10.2 Automatic Persona Generation
-
-After website discovery, Claude generates suggested personas.
-
-Each persona must include:
-
-- Name
-- Role
-- Context
-- Goal
-- Device
-- Behaviour
-- Patience
-- Success criteria
-
-Personas should be relevant to the detected website type.
-
-## 10.3 Default Personas
-
-For the MVP, suggest three personas by default.
-
-Examples:
-
-**First-time visitor**
-
-Goal: Understand what the website offers.
-
-**Potential customer**
-
-Goal: Discover key features and pricing.
-
-**AI assistant**
-
-Goal: Find accurate product information and important pages.
-
-The AI assistant persona should have its own access and navigation objective rather than pretending to represent a human visitor.
-
-## 10.4 Persona Editing
-
-Before starting a test, users may:
-
-- Select suggested personas
-- Remove personas
-- Edit their goals
-- Adjust persona descriptions
-- Add a custom persona
-- Regenerate suggestions
-
-Enforce plan limits before running a test.
+- **Passwordless magic links** via Supabase Auth (`signInWithOtp`), with email delivered through Resend configured as Supabase's custom SMTP. Responses never reveal whether an email has an account; a per-instance throttle sits on top of Supabase's own rate limits.
+- **Explore-before-login.** On the homepage, `startExplore(url)` validates the URL. A signed-in user goes straight to discovery. Otherwise a **pending intent** is stored (hashed token, expiry) and the magic link carries it; `/auth/callback` exchanges the code, consumes the intent and starts discovery for that URL.
+- `safeNextPath` only allows same-origin relative redirects.
+- **Session handling.** `src/proxy.ts` refreshes the Supabase session cookie on every matched request and redirects unauthenticated `/dashboard` requests to `/login?next=…`. `/api/*` and static assets are excluded.
+- Dashboard pages call `requireSession()` (which also opts the route into request-time rendering via `connection()`).
 
 ---
 
-# 11. Test Creation
+## 14. Plans, usage and billing
 
-## 11.1 New Test Page
+### Plans ([src/lib/usage/plans.ts](src/lib/usage/plans.ts))
 
-The creation flow contains:
-
-### Step 1: Website
-
-Display the selected URL and website summary.
-
-### Step 2: Test Goal
-
-Show suggested goals generated by Claude.
-
-Examples:
-
-- Can a new visitor understand this product?
-- Can a potential customer find pricing?
-- Can users discover the main features?
-- Can an AI agent extract accurate product information?
-
-Provide a custom text field:
-
-**What would you like to test?**
-
-### Step 3: Personas
-
-Display suggested persona cards.
-
-Allow users to select and edit them.
-
-### Step 4: Review
-
-Show:
-
-- Website
-- Goal
-- Number of personas
-- Maximum allowed pages
-- Estimated usage allowance
-- Safety restrictions
-
-### Primary Button
-
-**Start test**
-
-## 11.2 Validation
-
-Before starting:
-
-- User must be authenticated.
-- URL must be valid.
-- Website must be publicly reachable.
-- At least one persona must be selected.
-- Usage must be available.
-- Goal must be defined.
-- Domain must pass network safety checks.
-
----
-
-# 12. Browser Agent Execution
-
-## 12.1 Execution Architecture
-
-Use Daytona to run isolated browser environments.
-
-Each persona operates in its own browser context or sandbox with independent navigation state.
-
-Use Playwright for deterministic browser actions and Stagehand for Claude-guided interaction.
-
-## 12.2 Agent Inputs
-
-Each agent receives:
-
-- Starting URL
-- Persona description
-- Test goal
-- Device configuration
-- Allowed domain
-- Maximum actions
-- Maximum duration
-- Safety rules
-
-Agents must not receive the full discovered site map as navigation instructions.
-
-## 12.3 Agent Capabilities
-
-Agents can:
-
-- Navigate pages
-- Click links
-- Open menus
-- Scroll
-- Read visible content
-- Fill non-sensitive fields
-- Select options
-- Go backward
-- Follow internal navigation
-- Report task completion
-- Stop when blocked
-
-## 12.4 Agent Limits
-
-Suggested initial configuration:
-
-| Limit | Free | Startup |
+| Limit | Free | Startup (£99/month) |
 |---|---|---|
+| Test runs | 5 lifetime | 10 per calendar month |
 | Personas per test | 3 | 10 |
-| Maximum actions per persona | 8 | 20 |
-| Maximum duration per persona | 3 min | 8 min |
-| Screenshots | Key steps | All meaningful steps |
+| Pages per discovery scan | 10 | 50 |
+| Actions per persona | 8 | 20 |
+| Time per persona | 3 min | 8 min |
+| Screenshots | Key steps | Every step |
+| Discovery scans per day | 10 | 40 |
 
-The system must also enforce token and compute budgets.
+`effectivePlan(profile)` decides entitlement at read time: `comp` accounts are always Startup. Paid accounts lose access after `current_period_end` (immediately if cancelled; with a 3-day grace for late renewals). Usage is counted from the `usage` ledger (lifetime for Free, current month for Startup).
 
-## 12.5 Test Progress UI
+### Stripe ([src/lib/billing/stripe.ts](src/lib/billing/stripe.ts))
 
-Once started, redirect to:
+- **Subscribe with card:** creates or reuses a Stripe Customer, then opens a Checkout Session in `subscription` mode for `STRIPE_PRICE_ID`. It sets `client_reference_id` and `subscription_data.metadata.userId`, allows promotion codes, and uses `payment_method_collection: if_required` so a 100%-off code needs no card.
+- **Return:** `/dashboard/billing/stripe?session_id=…` verifies the session belongs to the signed-in user and syncs the subscription immediately.
+- **Webhook** `/api/stripe/webhook`: signature verified with `STRIPE_WEBHOOK_SECRET`. On `checkout.session.completed` and `customer.subscription.*` it re-reads the subscription from Stripe and syncs it, so out-of-order events converge.
+- **Manage billing** opens the Stripe Billing Portal.
 
-`/dashboard/tests/[id]`
+### PayPal ([src/lib/billing/paypal.ts](src/lib/billing/paypal.ts))
 
-Show:
+- A minimal REST client with a cached OAuth token. Sandbox or live is chosen by `PAYPAL_ENV`.
+- **Pay with PayPal:** creates a subscription for `PAYPAL_PLAN_ID` with `custom_id = userId` and redirects to PayPal's approval page.
+- **Return:** `/dashboard/billing/paypal?subscription_id=…` re-reads the subscription, checks `custom_id` matches the user, and syncs it.
+- **Webhook** `/api/paypal/webhook`: verified with PayPal's `verify-webhook-signature` API using `PAYPAL_WEBHOOK_ID`. Subscription events and renewal payments (`PAYMENT.SALE.*`, via `billing_agreement_id`) trigger a fresh re-read and sync.
+- **Cancel** happens in Settings (PayPal has no hosted portal); access lasts until the paid period ends.
+- `scripts/paypal-setup.mjs` creates the product and £99/month plan and prints the plan ID.
 
-- Test title
-- Website URL
-- Overall status
-- Number of completed personas
-- Individual persona states
-- Current activity
-- Progress indicator
+### Provider-neutral sync ([src/lib/billing/sync.ts](src/lib/billing/sync.ts))
 
-Example:
+`applySubscription` maps either provider's state onto the profile. It matches by `subscription_id` first, then by the user ID stored on the subscription. It never overwrites a different live subscription or a `comp` account.
 
-**3 of 5 personas completed**
+### Complimentary access
 
-- Alex: Completed
-- Sam: Running
-- Taylor: Completed
-- Morgan: Running
-- Jordan: Queued
-
-Avoid presenting fabricated progress. Statuses should reflect actual worker execution.
-
-## 12.6 Session Evidence
-
-Record:
-
-- Timestamp
-- Current URL
-- Action type
-- Target element
-- Action result
-- Screenshot
-- Browser error
-- Final outcome
-
-Store structured logs in Supabase and image files in Supabase Storage.
-
-## 12.7 Browser Safety
-
-- Block internal and private network destinations.
-- Validate URLs and redirects.
-- Restrict browsing to allowed domains.
-- Do not allow real purchases.
-- Do not submit destructive forms.
-- Do not bypass CAPTCHAs.
-- Do not collect sensitive information unnecessarily.
-- Limit concurrency.
-- Automatically terminate sandboxes.
-- Treat all website content as untrusted input.
+Set `plan = 'startup'` and `billing_provider = 'comp'` on a profile (SQL), or use a 100%-off Stripe promotion code.
 
 ---
 
-# 13. Evaluation and Findings
+## 15. Public share links
 
-## 13.1 Independent Evaluation
-
-Use Claude to evaluate the session results separately from the browser agent.
-
-Evaluation inputs:
-
-- Goal
-- Persona
-- Recorded actions
-- Browser outcomes
-- Screenshots or relevant visual evidence
-- Website facts
-- Final agent state
-
-The evaluator must determine whether the task was actually completed.
-
-## 13.2 Task Outcomes
-
-- Success
-- Partial success
-- Failed
-- Abandoned
-- Blocked
-- Inconclusive
-
-Do not automatically mark agent mistakes or timeouts as website defects.
-
-## 13.3 Finding Structure
-
-Each finding contains:
-
-- ID
-- Title
-- Description
-- Category
-- Severity
-- Confidence
-- Impacted personas
-- Evidence
-- Recommended fix
-
-## 13.4 Severity
-
-**Critical:** Essential task blocked by a confirmed problem.
-
-**High:** Significant usability or functional issue.
-
-**Medium:** Meaningful friction with possible workaround.
-
-**Low:** Minor issue or improvement opportunity.
-
-## 13.5 Finding Confidence
-
-- Confirmed
-- Likely
-- Hypothesis
-
-Only direct evidence can support a confirmed finding.
-
-## 13.6 Report Summary
-
-Show:
-
-- Number of personas
-- Number of successful tasks
-- Number of partial outcomes
-- Number of failures
-- Findings grouped by severity
-- AI agent readiness summary
-- Top recommended fixes
-
-Avoid presenting an arbitrary numerical score as more reliable than the underlying evidence.
+- The owner clicks **Share** on a finished test. `setTestSharing` generates a 144-bit random token (`base64url`) stored in `tests.share_token`. **Stop sharing** sets it to null, which kills the link immediately; sharing again issues a new token.
+- `/r/[token]` is a public page outside the dashboard. `getSharedReport` validates the token format, loads the test **only by token** with the service role, and returns just that test's website domain, personas, sessions, findings and events. Screenshots are 1-hour signed URLs. The owner's email and other data are never loaded.
+- Shared pages are `noindex, nofollow`, use the white report theme, and end with a "Try Phanera" call to action.
 
 ---
 
-# 14. Results UI
+## 16. Security model
 
-## 14.1 Test Overview
-
-The results page uses shadcn Cards and Tabs.
-
-Tabs:
-
-- Overview
-- Personas
-- Sessions
-- Findings
-- Agent Readiness
-
-## 14.2 Overview Tab
-
-Display:
-
-- Test status
-- Goal
-- Task completion count
-- Number of findings
-- Most important issues
-- Short conclusion
-
-## 14.3 Personas Tab
-
-Display persona cards with:
-
-- Name
-- Role
-- Goal
-- Device
-- Outcome
-- Duration
-- Actions taken
-
-Selecting a persona opens its session.
-
-## 14.4 Sessions Tab
-
-Display:
-
-- Screenshot viewer
-- Timeline
-- Page URLs
-- Action history
-- Observed errors
-- Final result
-
-For MVP, a step-by-step screenshot replay is sufficient. Continuous video recording is not necessary.
-
-## 14.5 Findings Tab
-
-Use a list sorted by severity.
-
-Selecting a finding reveals:
-
-- Detailed explanation
-- Impacted personas
-- Relevant page
-- Screenshot
-- Evidence timeline
-- Suggested fix
-
-## 14.6 Agent Readiness Tab
-
-Show:
-
-- Content accessibility
-- Page discovery
-- Semantic navigation
-- Content comprehension
-- Rendering issues
-- Missing structured information
-
-Clearly distinguish measured results from interpretation.
+- **SSRF protection** ([src/lib/validation/network.ts](src/lib/validation/network.ts)): `assertPublicUrl` resolves DNS and rejects private, loopback, link-local and other non-public addresses. `safeFetch` re-validates every redirect hop manually (max 5), enforces timeouts and caps response size.
+- **Browser sandboxing:** each persona has an isolated context; navigation is restricted to the target site and GET only; private networks are blocked; downloads and service workers are disabled; prompts forbid purchases, account creation, real personal data and CAPTCHA bypass.
+- **Prompt injection:** scraped content is always marked as untrusted data.
+- **Least privilege:** browser clients use the anon key with read-only RLS. The service-role key exists only in server code (`server-only` imports make leaking it into a client bundle a build error).
+- **Webhooks** are verified (Stripe signature; PayPal postback verification), and entitlement is always taken from a fresh provider read, never from the webhook body or URL parameters alone.
+- **Ownership checks** in every server action (billing, sharing, stopping, test creation) before any service-role write.
+- **No secrets in the repo.** `.env.local` is gitignored; `.env.example` contains placeholders only.
 
 ---
 
-# 15. Data Model
+## 17. Frontend
 
-## 15.1 Profiles
+### Routes
 
-- id
-- email
-- plan
-- created_at
-- updated_at
+| Route | Description |
+|---|---|
+| `/` | Marketing home: hero (voxel flower), how it works (isometric SVG), environments, personas, replays, findings preview, agent readiness, pricing, FAQ, final call to action (voxel ants) |
+| `/pricing`, `/privacy`, `/terms` | Marketing pages |
+| `/login` | Magic-link sign-in |
+| `/dashboard` | Overview, recent tests |
+| `/dashboard/new` | Test wizard: website → goal → personas → review |
+| `/dashboard/websites`, `/dashboard/websites/[id]` | Websites and discovery results |
+| `/dashboard/tests` | Test history |
+| `/dashboard/tests/[id]` | One-page report (live progress card with Stop while running) |
+| `/dashboard/tests/[id]/sessions/[sessionId]` | Single session detail |
+| `/dashboard/settings` | Account, plan and billing, usage limits |
+| `/r/[token]` | Public shared report |
 
-## 15.2 Websites
+### The report ([src/components/report](src/components/report))
 
-- id
-- user_id
-- url
-- domain
-- title
-- description
-- created_at
+`ReportBody` is shared by the dashboard and the public page:
 
-## 15.3 Website Pages
+1. **Summary:** verdict ("2 of 3 personas reached the goal"), short conclusion, High/Medium/Low counts, persona chips that jump to their session.
+2. **Issues board** (`IssueBoard`): Low / Medium / High columns (stacked High-first on narrow screens). Tickets open a Notion/Jira-style side panel with a breadcrumb, previous/next (arrow keys or j/k), properties (severity, category, confidence, affected personas, page), description, recommended fix, attachment screenshot and an evidence timeline.
+3. **Sessions:** one framed panel with persona tabs. `SessionDetail` shows the one-line verdict and key points, stats, collapsible reasoning and agent notes, the persona's motivation, website issues (test-run notes collapsed), the **journey graph** (React Flow: page visits as nodes, actions as edges, issues inline) and the **step replay** (screenshots and timeline).
+4. Dashboard only: **Agent readiness** (measured table and AI interpretation).
 
-- id
-- website_id
-- url
-- title
-- page_type
-- content_summary
-- crawl_status
+### Design system
 
-## 15.4 Tests
-
-- id
-- user_id
-- website_id
-- title
-- goal
-- status
-- configuration
-- created_at
-- completed_at
-
-## 15.5 Personas
-
-- id
-- test_id
-- name
-- role
-- goal
-- configuration
-
-## 15.6 Sessions
-
-- id
-- test_id
-- persona_id
-- status
-- outcome
-- duration
-- action_count
-
-## 15.7 Session Events
-
-- id
-- session_id
-- timestamp
-- action
-- url
-- result
-- screenshot_path
-
-## 15.8 Findings
-
-- id
-- test_id
-- title
-- description
-- severity
-- confidence
-- recommendation
-- evidence
-
-## 15.9 Usage
-
-- id
-- user_id
-- test_id
-- usage_type
-- quantity
-- created_at
-
-## 15.10 Pending Authentication Intents
-
-- id
-- normalized_url
-- state_token_hash
-- expires_at
-- consumed_at
-
-Only retain pending intents for the minimum necessary time.
+- **Light monochrome theme.** CSS tokens live in `globals.css`. The marketing site uses a soft grey "studio" background; the dashboard and shared reports switch to plain white via `body:has([data-surface="white"])`, which also covers portalled sheets and dialogs.
+- **Brand:** a pixel ant generated from geometry ([src/components/ants/sprites.ts](src/components/ants/sprites.ts)), used for the logo, favicon and persona avatars. Exported assets are in `public/brand/`.
+- **Voxel scenes** (three.js): the hero flower with ants climbing it, and marching ants. They load lazily, pause off-screen, respect reduced motion, and fall back to Canvas 2D without WebGL.
+- **Isometric SVG** ([src/components/landing/iso](src/components/landing/iso)): projection helpers and primitives (tiles, laptop, phone, badges, dashed links, faint grid, walking pixel ants) with CSS-only motion.
 
 ---
 
-# 16. Environment Variables
+## 18. Environment variables
 
-```env
-NEXT_PUBLIC_APP_URL=
+Names only. See `.env.example`; real values live in `.env.local` (local), Vercel (web) and Railway (worker).
 
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+| Variable | Used by | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_APP_URL` | web | Public base URL for auth redirects, billing returns and share links |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web | Supabase client (RLS-restricted) |
+| `SUPABASE_SERVICE_ROLE_KEY` | web, worker | Trusted server writes |
+| `ANTHROPIC_API_KEY` | web, worker | Claude |
+| `ANTHROPIC_MODEL` | web, worker | Main model (default `claude-opus-5-5`) |
+| `ANTHROPIC_AGENT_MODEL` | worker | Per-step browser model (defaults to the main model) |
+| `ANTHROPIC_FALLBACKS` | web, worker | `off` disables server-side fallbacks |
+| `RESEND_API_KEY` | Supabase SMTP | Email delivery (configured in Supabase, not read by the app) |
+| `JOB_RUNNER` | web | `worker` in production |
+| `PERSONA_CONCURRENCY` | worker | Personas in parallel per test (1–10) |
+| `WORKER_MAX_TESTS`, `WORKER_MAX_DISCOVERIES`, `WORKER_POLL_MS` | worker | Worker concurrency and polling |
+| `BROWSER_PROVIDER` | worker | `local` or `daytona` |
+| `DAYTONA_API_KEY`, `DAYTONA_API_URL` | worker | Optional Daytona sandboxes |
+| `ALLOW_LOCAL_BROWSER` | dev | Allow local Chromium in development |
+| `PLAYWRIGHT_VERSION` | Trigger.dev | Browser version for the build extension |
+| `TRIGGER_SECRET_KEY`, `TRIGGER_PROJECT_REF` | web | Optional Trigger.dev runner |
+| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | web | Card subscriptions |
+| `PAYPAL_ENV`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_PLAN_ID`, `PAYPAL_WEBHOOK_ID` | web | PayPal subscriptions |
 
-ANTHROPIC_API_KEY=
-ANTHROPIC_MODEL=
+Each payment method's buttons only appear when its variables are set.
 
-RESEND_API_KEY=
+---
 
-DAYTONA_API_KEY=
-DAYTONA_API_URL=
+## 19. Local development
 
-TRIGGER_SECRET_KEY=
+Prerequisites: Node 20+, pnpm 10, a Supabase project with the migrations applied, and a Claude API key.
+
+```bash
+pnpm install
+cp .env.example .env.local        # fill in values
+pnpm dev                          # http://localhost:3000
 ```
 
-Resend credentials used for Supabase Auth should be configured in the Supabase SMTP settings. A separate application-level `RESEND_API_KEY` is only required if the application itself sends emails through Resend's API.
+Running jobs locally, either:
+- **Simplest:** leave `JOB_RUNNER` unset and set `ALLOW_LOCAL_BROWSER=true`. Jobs run in-process with local Chromium (`npx playwright install chromium` once).
+- **Like production:** set `JOB_RUNNER=worker` and run `pnpm worker` in a second terminal.
 
-Never expose server-side keys through public environment variables.
+If local development points at the **production** Supabase project, use `JOB_RUNNER=worker` and don't run a local worker, or the local worker will pick up real users' jobs.
 
----
-
-# 17. Development Requirements
-
-## 17.1 Local Development
-
-The application must work locally before deployment.
-
-The developer should be able to:
-
-1. Run the Next.js application.
-2. Connect to a Supabase development environment.
-3. Test magic-link authentication.
-4. Submit a public URL.
-5. Start discovery.
-6. Execute a browser session through Daytona.
-7. Generate a Claude-based evaluation.
-8. View the report locally.
-
-## 17.2 Code Organisation
-
-Suggested structure:
-
-```text
-src/
-  app/
-    page.tsx
-    pricing/
-    login/
-    auth/
-      callback/
-    dashboard/
-      page.tsx
-      new/
-      websites/
-      tests/
-      settings/
-    api/
-      websites/
-      tests/
-      personas/
-
-  components/
-    ui/
-    landing/
-    dashboard/
-    personas/
-    sessions/
-    findings/
-    murmuration/
-
-  lib/
-    supabase/
-    auth/
-    claude/
-    daytona/
-    discovery/
-    agents/
-    evaluation/
-    usage/
-    validation/
-
-  types/
-  hooks/
-
-supabase/
-  migrations/
-
-workers/
-  discovery/
-  browser/
-  evaluation/
-```
-
-## 17.3 Application Architecture
-
-Separate:
-
-- UI components
-- API handlers
-- Authentication
-- Database queries
-- AI prompts
-- Browser execution
-- Evaluation
-- Background orchestration
-
-Avoid putting the full test pipeline inside one API route.
-
-## 17.4 AI Prompt Management
-
-Keep AI prompts in dedicated modules.
-
-At minimum:
-
-- Website summary prompt
-- Persona generation prompt
-- Goal generation prompt
-- Browser agent instructions
-- Evaluation prompt
-- Findings prompt
-
-Use structured output schemas and validate returned data.
-
-Do not rely on parsing loosely formatted Markdown from Claude.
+| Script | Purpose |
+|---|---|
+| `pnpm dev` / `build` / `start` | Next.js |
+| `pnpm lint` / `typecheck` | ESLint, `tsc --noEmit` |
+| `pnpm worker` | Job worker |
+| `pnpm smoke:discovery` / `smoke:browser` | Manual smoke tests |
+| `pnpm trigger:dev` | Optional Trigger.dev dev server |
+| `node --env-file=.env.local scripts/paypal-setup.mjs` | Create the PayPal plan |
 
 ---
 
-# 18. MVP User Flow Acceptance Tests
+## 20. Deployment
 
-## Test A: Homepage to Authentication
+| Piece | Where | Notes |
+|---|---|---|
+| Web app | **Vercel** | Set web env vars for Production, including `JOB_RUNNER=worker`. Redeploy after changing `NEXT_PUBLIC_*` values (they are inlined at build time). |
+| Worker | **Railway** | Builds `Dockerfile.worker` (Playwright 1.64 Noble base image, pnpm, runs as `pwuser`) per `railway.json`, restart policy always. Image defaults: `BROWSER_PROVIDER=local`, `PERSONA_CONCURRENCY=3`, `WORKER_MAX_TESTS=2`. Suggested resources: about 4 vCPU / 8 GB. |
+| Database, auth, storage | **Supabase** | Run every migration in order in the SQL editor. Set Auth URL configuration (site URL and redirect URLs) and Resend SMTP. |
+| Billing | **Stripe / PayPal** | Webhooks: `<APP_URL>/api/stripe/webhook` (`checkout.session.completed`, `customer.subscription.created/updated/deleted/paused/resumed`) and `<APP_URL>/api/paypal/webhook` (`BILLING.SUBSCRIPTION.ACTIVATED/UPDATED/CANCELLED/SUSPENDED/EXPIRED`, `PAYMENT.SALE.COMPLETED`). Enable the Stripe Customer Portal. |
 
-**Given** an unauthenticated user visits the homepage,
+**Order of operations for schema changes:** run the migration first, then push. A new worker that expects a missing column cannot claim jobs.
 
-**When** they enter `example.com` and click Explore,
-
-**Then** the application normalises the URL, opens the email authentication dialog, and preserves the submitted website.
-
-## Test B: Magic Link
-
-**Given** a valid email was submitted,
-
-**When** the user opens the received magic link,
-
-**Then** the application verifies authentication, creates a session, and redirects to the dashboard with the original website URL available.
-
-## Test C: Persistent Session
-
-**Given** an authenticated user,
-
-**When** they refresh the dashboard or return in a new browser session while their authentication remains valid,
-
-**Then** they remain signed in without another email link.
-
-## Test D: Discovery
-
-**Given** a supported public website,
-
-**When** the user starts discovery,
-
-**Then** Phanera returns a page inventory, website summary, and suggested test goals.
-
-## Test E: Personas
-
-**Given** a completed discovery,
-
-**When** the user generates personas,
-
-**Then** Phanera produces distinct, relevant personas with defined goals.
-
-## Test F: Browser Test
-
-**Given** a valid test configuration,
-
-**When** the user starts a test,
-
-**Then** browser agents execute within isolated environments and save their actual actions.
-
-## Test G: Findings
-
-**Given** completed sessions,
-
-**When** evaluation finishes,
-
-**Then** the user receives a structured report with outcomes, evidence and recommendations.
-
-## Test H: Usage Limits
-
-**Given** a user has exhausted their allowance,
-
-**When** they attempt another test,
-
-**Then** the application prevents execution and explains the applicable plan limit.
-
-## Test I: Failed Execution
-
-**Given** a browser worker fails,
-
-**When** the failure is detected,
-
-**Then** the interface shows a meaningful failure state, preserves available evidence and handles usage consistently.
-
-## Test J: Session Security
-
-**Given** a private report belongs to another user,
-
-**When** an unauthorised user requests it,
-
-**Then** the application denies access.
+The full click-by-click setup is in [SETUP.md](SETUP.md).
 
 ---
 
-# 19. Build Order
+## 21. Operations and troubleshooting
 
-## Milestone 1: Design Foundation
-
-- Next.js project
-- Tailwind CSS
-- shadcn/ui installation
-- Dark design tokens
-- Geist typography
-- App layouts
-- Responsive homepage
-- Murmuration animation
-
-**Complete when:** The public website and dashboard shell are responsive and visually consistent.
-
-## Milestone 2: Authentication
-
-- Supabase Auth
-- Resend SMTP
-- Login dialog
-- Magic-link callback
-- Secure session persistence
-- Protected routes
-- URL intent preservation
-
-**Complete when:** A user can enter a URL, authenticate, and arrive at the dashboard with the URL prefilled.
-
-## Milestone 3: Website Discovery
-
-- URL validation
-- Safe crawling
-- Page extraction
-- Website classification
-- Claude summarisation
-- Database persistence
-- Discovery progress UI
-
-**Complete when:** A website can be scanned and summarised with actual content.
-
-## Milestone 4: Personas and Tests
-
-- Suggested test goals
-- Persona generation
-- Persona selection
-- Test configuration
-- Test database records
-- Usage limits
-
-**Complete when:** Users can configure a meaningful test from discovered website data.
-
-## Milestone 5: Agent Execution
-
-- Daytona integration
-- Playwright
-- Stagehand
-- Claude agent reasoning
-- Session isolation
-- Action capture
-- Screenshots
-- Background execution
-- Job status updates
-
-**Complete when:** Multiple personas independently explore a website and produce recorded sessions.
-
-## Milestone 6: Evaluation and Reports
-
-- Claude evaluator
-- Task outcomes
-- Findings
-- Severity classification
-- Evidence links
-- Results dashboard
-- Session timeline
-- Agent readiness results
-
-**Complete when:** Users can inspect a complete, evidence-backed test report.
-
-## Milestone 7: MVP Release
-
-- Authentication verification
-- Security checks
-- Usage and cost controls
-- Failed-job handling
-- Responsive testing
-- Deployment to Vercel
-- Production Supabase configuration
-- Resend sender-domain verification
-
-**Complete when:** New users can complete the entire workflow without developer intervention.
+- **Worker logs (Railway):**
+  - The boot line shows the concurrency in effect (`up · tests ≤2 · … · personas/test 3`).
+  - `health ·` lines show memory every minute.
+  - `[agent <session> <persona>] step N … · look · decide · act` timings show whether slowness comes from the browser or the model.
+- **A test looks stuck:** with the heartbeat it is restarted automatically within about 2 minutes if its worker died. Users can also **Stop test** (and **Force stop** after 60 s).
+- **Railway variables override the Dockerfile.** If personas run one at a time, check for an old `PERSONA_CONCURRENCY=1` variable.
+- **"No matching branch env" errors** come from Trigger.dev being selected unintentionally: set `JOB_RUNNER=worker` on the web app.
+- **Refunds** happen automatically for environment failures, user stops with no finished persona, and worker crashes on the second attempt.
 
 ---
 
-# 20. Definition of Done
+## 22. Known limitations
 
-The MVP is complete when:
-
-- The homepage explains Phanera and accepts a website URL.
-- The landing page uses the dark shadcn visual system and murmuration branding.
-- Authentication works through Supabase Auth and Resend magic links.
-- Login sessions persist correctly through cookies.
-- The original website URL survives authentication.
-- Users can manage their websites and tests in a dashboard.
-- Phanera discovers and understands real website content.
-- Claude generates relevant personas and test goals.
-- Daytona executes isolated browser tests.
-- Sessions record actual interactions and screenshots.
-- Claude evaluates real session evidence.
-- Reports contain useful, traceable findings.
-- The website's AI agent accessibility is assessed.
-- Users can revisit previous reports.
-- Usage limits and basic security protections are enforced.
-- The entire workflow works locally and after deployment.
-
-**The MVP should prioritise an end-to-end functional experience over integrations, enterprise capabilities, and advanced reporting features.**
+- Public websites only: no logged-in flows, localhost or private networks.
+- One browser engine (Chromium). "Mobile" is a phone-sized viewport with touch and an iPhone user agent, not a real device. No network throttling.
+- Personas are simulated and are not a substitute for research with real customers.
+- No team accounts, scheduled runs, CI integration or PDF export yet.
+- The privacy and terms pages are placeholders.

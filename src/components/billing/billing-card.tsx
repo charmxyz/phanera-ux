@@ -20,9 +20,9 @@ const NOTICE: Record<string, { text: string; tone?: "destructive" }> = {
 
 const s = PLAN_LIMITS.startup;
 const FEATURES = [
-  `${s.monthlyTestRuns} test runs every month`,
+  `${s.monthlyTestRuns} usability tests every month`,
   `Up to ${s.personasPerTest} personas per test`,
-  `${s.pagesPerScan} pages per website scan`,
+  `${s.pagesPerScan} pages per website analysis`,
   `${s.maxActionsPerPersona} actions and ${s.maxDurationMsPerPersona / 60_000} minutes per persona`,
   "Screenshots of every step",
 ];

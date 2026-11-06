@@ -7,7 +7,7 @@ import type { DiscoveryStatus } from "@/types/database";
 const STAGES: { key: DiscoveryStatus; label: string }[] = [
   { key: "queued", label: "Queued" },
   { key: "fetching", label: "Fetching website" },
-  { key: "discovering", label: "Discovering pages" },
+  { key: "discovering", label: "Mapping pages" },
   { key: "extracting", label: "Extracting content" },
   { key: "analysing", label: "Analysing website" },
 ];
@@ -20,7 +20,7 @@ export function DiscoveryProgress({ status, domain, pageCount }: { status: Disco
       <CardHeader className="flex flex-row items-center gap-4">
         <AntAvatar seed={domain} size={48} state="active" />
         <div>
-          <CardTitle>Discovering <span className="font-mono">{domain}</span></CardTitle>
+          <CardTitle>Analysing <span className="font-mono">{domain}</span></CardTitle>
           <CardDescription>Mapping pages and understanding the product. This usually takes under a minute.</CardDescription>
         </div>
       </CardHeader>

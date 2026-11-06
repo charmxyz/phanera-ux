@@ -26,8 +26,8 @@ const ACTION_LABEL: Record<string, string> = {
   scroll_up: "Scrolled up",
   go_back: "Went back",
   navigate: "Navigated to",
-  finish: "Finished",
-  give_up: "Gave up",
+  finish: "Task completed",
+  give_up: "Task not completed",
   error: "Error",
 };
 

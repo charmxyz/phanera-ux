@@ -69,14 +69,14 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
           <div className="grid gap-1">
             <p className="font-medium">{website.name} <span className="ml-1 font-mono text-xs text-muted-foreground">{website.url}</span></p>
             <p className="text-sm text-muted-foreground">{website.description}</p>
-            <p className="text-xs text-muted-foreground">{website.type} · {website.pageCount} pages discovered</p>
+            <p className="text-xs text-muted-foreground">{website.type} · {website.pageCount} pages analysed</p>
           </div>
         </div>
       </Step>
 
       {/* Step 2 */}
-      <Step n={2} title="Test goal" description="Pick a suggested goal or describe your own.">
-        <div className="grid gap-2" role="radiogroup" aria-label="Test goal">
+      <Step n={2} title="User task" description="Pick a suggested task or describe what users should try to do.">
+        <div className="grid gap-2" role="radiogroup" aria-label="User task">
           {suggestedGoals.map((g) => (
             <button
               key={g}
@@ -94,7 +94,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
             </button>
           ))}
           <div className={cn("grid gap-2 rounded-lg border px-3 py-2.5", goalChoice === "__custom" ? "border-primary/60 bg-primary/5" : "border-border")}>
-            <Label htmlFor="custom-goal" className="text-sm font-normal">What would you like to test?</Label>
+            <Label htmlFor="custom-goal" className="text-sm font-normal">What should users try to do?</Label>
             <Textarea
               id="custom-goal"
               rows={2}
@@ -115,7 +115,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
       <Step
         n={3}
         title="Personas"
-        description={`Every persona attempts the goal above, each with their own motivation and browsing style. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
+        description={`Every AI persona attempts the user task above, each with their own motivation and browsing style. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={regenerate} disabled={regenPending}>
@@ -145,7 +145,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
                   <p className="truncate font-medium">{it.persona.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{it.persona.role}</p>
                 </div>
-                <span className="shrink-0 text-muted-foreground" title={it.persona.kind === "ai_agent" ? "AI agent" : it.persona.device}>
+                <span className="shrink-0 text-muted-foreground" title={it.persona.kind === "ai_agent" ? "AI assistant" : it.persona.device}>
                   {it.persona.kind === "ai_agent" ? <BotIcon className="size-4" /> : it.persona.device === "mobile" ? <SmartphoneIcon className="size-4" /> : <MonitorIcon className="size-4" />}
                 </span>
               </div>
@@ -166,12 +166,12 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
       <Step n={4} title="Review">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <Row label="Website"><span className="font-mono">{website.domain}</span></Row>
-          <Row label="Goal">{goal || <span className="text-muted-foreground">Not set</span>}</Row>
+          <Row label="User task">{goal || <span className="text-muted-foreground">Not set</span>}</Row>
           <Row label="Personas">{selected.length} selected</Row>
           <Row label="Limits per persona">{limits.maxActionsPerPersona} actions · {limits.maxDurationMin} min</Row>
-          <Row label="Maximum pages per scan">{limits.pagesPerScan}</Row>
+          <Row label="Pages per website analysis">{limits.pagesPerScan}</Row>
           <Row label="Usage">
-            Uses 1 test run · {usage.remaining} of {usage.allowance} remaining{usage.period === "month" ? " this month" : ""}
+            Uses 1 usability test · {usage.remaining} of {usage.allowance} remaining{usage.period === "month" ? " this month" : ""}
           </Row>
         </dl>
         <Alert className="mt-4">
@@ -183,7 +183,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
         {outOfUsage && (
           <Alert variant="destructive" className="mt-3">
             <AlertDescription>
-              You&apos;ve used all {usage.allowance} test runs {usage.period === "lifetime" ? `included in the ${limits.planLabel} plan` : "for this month"}.{" "}
+              You&apos;ve used all {usage.allowance} usability tests {usage.period === "lifetime" ? `included in the ${limits.planLabel} plan` : "for this month"}.{" "}
               {usage.period === "lifetime" && <Link href="/dashboard/settings#billing" className="font-medium underline underline-offset-2">Upgrade to Startup</Link>}
             </AlertDescription>
           </Alert>

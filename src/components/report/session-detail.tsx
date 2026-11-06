@@ -68,10 +68,10 @@ export function SessionDetail({
             <Stat label="Duration" value={formatDuration(session.duration_ms)} />
             <Stat label="Actions" value={String(session.action_count)} />
             <Stat label="Pages visited" value={String(pagesVisited)} />
-            <Stat label="Site issues" value={String(siteIssues.length)} />
+            <Stat label="Usability issues" value={String(siteIssues.length)} />
           </dl>
           {evaluation?.rationale && evaluation.rationale !== headline && (
-            <More label="Why this verdict"><p className="leading-relaxed text-muted-foreground">{evaluation.rationale}</p></More>
+            <More label="Why this result"><p className="leading-relaxed text-muted-foreground">{evaluation.rationale}</p></More>
           )}
           {session.agent_summary && (
             <More label="Agent's own notes"><AgentReport text={session.agent_summary} heading={false} preview={100} /></More>
@@ -80,7 +80,7 @@ export function SessionDetail({
 
         <Card className="gap-0 py-0">
           <div className="flex flex-wrap gap-1.5 border-b border-border px-5 py-3 text-xs text-muted-foreground">
-            <span className="rounded-md border border-border px-2 py-0.5">{conf.kind === "ai_agent" ? "AI agent" : "Human persona"}</span>
+            <span className="rounded-md border border-border px-2 py-0.5">{conf.kind === "ai_agent" ? "AI assistant" : "Human persona"}</span>
             <span className="rounded-md border border-border px-2 py-0.5 capitalize">{conf.device ?? "desktop"}</span>
             {conf.patience && <span className="rounded-md border border-border px-2 py-0.5 capitalize">{conf.patience} patience</span>}
           </div>
@@ -95,7 +95,7 @@ export function SessionDetail({
       {(siteIssues.length > 0 || runNotes.length > 0) && (
         <Card className="gap-0 py-0">
           <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-            <p className="font-medium">Issues in this session</p>
+            <p className="font-medium">Usability issues in this session</p>
             <span className="text-xs text-muted-foreground">{siteIssues.length} on the website</span>
           </div>
           {siteIssues.length > 0 ? (
@@ -114,7 +114,7 @@ export function SessionDetail({
             <p className="px-5 py-3 text-sm text-muted-foreground">No website problems in this session.</p>
           )}
           {runNotes.length > 0 && (
-            <More label={`${runNotes.length} note${runNotes.length === 1 ? "" : "s"} about the test run (not the website)`}>
+            <More label={`${runNotes.length} note${runNotes.length === 1 ? "" : "s"} about the test setup (not the website)`}>
               <ul className="grid gap-2 text-sm text-muted-foreground">
                 {runNotes.map((o, i) => <li key={i}><span className="font-mono text-xs">{o.step != null ? `step ${o.step} · ` : ""}</span>{o.issue}</li>)}
               </ul>

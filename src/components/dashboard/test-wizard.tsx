@@ -130,7 +130,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
           {items.map((it) => (
             <div
               key={it.key}
-              className={cn("grid gap-3 rounded-xl border p-4 transition-colors", it.selected ? "border-primary/50 bg-primary/5" : "border-border")}
+              className={cn("flex min-w-0 flex-col gap-3 rounded-xl border p-4 transition-colors", it.selected ? "border-primary/50 bg-primary/5" : "border-border")}
             >
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -144,13 +144,13 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
                   <p className="truncate font-medium">{it.persona.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{it.persona.role}</p>
                 </div>
-                <span className="text-muted-foreground" title={it.persona.device}>
+                <span className="shrink-0 text-muted-foreground" title={it.persona.kind === "ai_agent" ? "AI agent" : it.persona.device}>
                   {it.persona.kind === "ai_agent" ? <BotIcon className="size-4" /> : it.persona.device === "mobile" ? <SmartphoneIcon className="size-4" /> : <MonitorIcon className="size-4" />}
                 </span>
               </div>
-              <p className="text-sm"><span className="text-muted-foreground">Goal: </span>{it.persona.goal}</p>
-              {it.persona.behaviour && <p className="line-clamp-2 text-xs text-muted-foreground">{it.persona.behaviour}</p>}
-              <div className="flex gap-1">
+              <p className="line-clamp-4 text-sm break-words" title={it.persona.goal}><span className="text-muted-foreground">Goal: </span>{it.persona.goal}</p>
+              {it.persona.behaviour && <p className="line-clamp-2 text-xs break-words text-muted-foreground" title={it.persona.behaviour}>{it.persona.behaviour}</p>}
+              <div className="mt-auto flex gap-1">
                 <Button variant="ghost" size="xs" onClick={() => setEditing({ key: it.key, persona: it.persona })}><PencilIcon /> Edit</Button>
                 <Button variant="ghost" size="xs" onClick={() => setItems((xs) => xs.filter((x) => x.key !== it.key))}><Trash2Icon /> Remove</Button>
               </div>

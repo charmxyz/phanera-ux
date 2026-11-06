@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronLeftIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, ChevronLeftIcon, TargetIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { AutoRefresh } from "@/components/dashboard/auto-refresh";
@@ -11,6 +11,7 @@ import { OutcomeLabel, StatusLabel } from "@/components/sessions/status";
 import { AntAvatar } from "@/components/ants/pixel-ant";
 import { requireSession, signedScreenshotUrls, formatDuration } from "@/lib/dashboard/queries";
 import type { Persona, SessionEvaluation } from "@/lib/claude/schemas";
+import { pageKey } from "@/components/sessions/journey";
 
 export const metadata: Metadata = { title: "Agent session" };
 
@@ -28,6 +29,7 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
   const conf = (persona?.configuration ?? {}) as Partial<Persona>;
   const evaluation = session.evaluation as SessionEvaluation | null;
   const active = session.status === "queued" || session.status === "running";
+  const pagesVisited = new Set((events ?? []).map((e) => e.url).filter((u): u is string => !!u && !u.startsWith("chrome-error")).map(pageKey)).size;
 
   return (
     <div className="grid gap-6">
@@ -38,37 +40,74 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
         description={<span className="font-mono text-xs">session {session.id.slice(0, 8)} · {formatDuration(session.duration_ms)} · {session.action_count} actions · {conf.device ?? "desktop"}</span>}
         actions={session.outcome ? <OutcomeLabel outcome={session.outcome} /> : <StatusLabel status={session.status} />}
       />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card size="sm">
-          <CardHeader><CardTitle className="text-sm">Task</CardTitle></CardHeader>
-          <CardContent className="grid gap-2 text-sm">
-            <p>{persona?.goal}</p>
-            {conf.success_criteria && <p className="text-muted-foreground">Success when: {conf.success_criteria}</p>}
-            {session.current_activity && <p className="text-primary">{session.current_activity}</p>}
-          </CardContent>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        {/* Result: the verdict first, then why, then the agent's own words. */}
+        <Card className="gap-0 py-0">
+          <div className="grid gap-3 px-5 py-5">
+            <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Final result</span>
+            {session.outcome ? (
+              <OutcomeLabel outcome={session.outcome} className="text-xl font-semibold tracking-tight [&_svg]:size-5" />
+            ) : (
+              <StatusLabel status={session.status} className="text-xl font-semibold tracking-tight [&_svg]:size-5" />
+            )}
+            {evaluation ? (
+              <p className="max-w-prose leading-relaxed text-pretty">{evaluation.rationale}</p>
+            ) : (
+              <p className="text-muted-foreground">{active ? "In progress." : "Not evaluated."}</p>
+            )}
+            {session.error && <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{session.error}</p>}
+          </div>
+          <dl className="grid grid-cols-2 border-t border-border sm:grid-cols-4">
+            <Stat label="Duration" value={formatDuration(session.duration_ms)} />
+            <Stat label="Actions" value={String(session.action_count)} />
+            <Stat label="Pages visited" value={String(pagesVisited)} />
+            <Stat label="Issues noted" value={String(evaluation?.observations?.length ?? 0)} />
+          </dl>
+          {session.agent_summary && <AgentReport text={session.agent_summary} />}
         </Card>
-        <Card size="sm">
-          <CardHeader><CardTitle className="text-sm">Final result</CardTitle></CardHeader>
-          <CardContent className="grid gap-2 text-sm">
-            {evaluation ? <p>{evaluation.rationale}</p> : <p className="text-muted-foreground">{active ? "In progress." : "Not evaluated."}</p>}
-            {session.agent_summary && <p className="text-muted-foreground">Agent&apos;s own report: {session.agent_summary}</p>}
-            {session.error && <p className="text-destructive">{session.error}</p>}
-          </CardContent>
+
+        <Card className="gap-0 py-0">
+          <div className="grid gap-2 px-5 py-5">
+            <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Task</span>
+            <p className="leading-relaxed text-pretty">{persona?.goal}</p>
+            {session.current_activity && active && <p className="text-primary">{session.current_activity}</p>}
+          </div>
+          {conf.success_criteria && (
+            <div className="mx-5 mb-5 grid gap-1 rounded-lg border border-border bg-muted/40 px-3.5 py-3">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><TargetIcon className="size-3.5" />Success when</span>
+              <p className="leading-relaxed text-pretty">{conf.success_criteria}</p>
+            </div>
+          )}
+          {(
+            <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              <span className="rounded-md bg-muted px-2 py-0.5">{conf.kind === "ai_agent" ? "AI agent" : "Human persona"}</span>
+              <span className="rounded-md bg-muted px-2 py-0.5 capitalize">{conf.device ?? "desktop"}</span>
+            </div>
+          )}
         </Card>
       </div>
       {evaluation?.observations?.length ? (
-        <Card size="sm">
-          <CardHeader><CardTitle className="text-sm">Observed issues</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="grid gap-2 text-sm">
-              {evaluation.observations.map((o, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="w-14 shrink-0 font-mono text-xs text-muted-foreground">{o.step != null ? `step ${o.step}` : "—"}</span>
-                  <span>{o.issue} <span className="text-xs text-muted-foreground">({o.is_website_issue ? "website" : "agent/environment"}{o.directly_observed ? ", observed" : ""})</span></span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
+        <Card className="gap-0 py-0">
+          <div className="border-b border-border px-5 py-4">
+            <p className="font-medium">Observed issues</p>
+            <p className="text-xs text-muted-foreground">What the evaluator noticed in this session&apos;s steps and screenshots</p>
+          </div>
+          <ul className="divide-y divide-border">
+            {evaluation.observations.map((o, i) => (
+              <li key={i} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-3 px-5 py-3">
+                <span className="pt-0.5 font-mono text-xs text-muted-foreground">{o.step != null ? `step ${o.step}` : "general"}</span>
+                <div className="grid gap-1.5">
+                  <p className="leading-snug">{o.issue}</p>
+                  <div className="flex flex-wrap gap-1.5 text-xs">
+                    <span className={o.is_website_issue ? "rounded-md bg-warning/10 px-1.5 py-0.5 text-warning" : "rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground"}>
+                      {o.is_website_issue ? "Website issue" : "Agent / environment"}
+                    </span>
+                    {o.directly_observed && <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">Seen in screenshot</span>}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
       ) : null}
       <Card size="sm">
@@ -101,5 +140,76 @@ export default async function SessionPage({ params }: PageProps<"/dashboard/test
         }))}
       />
     </div>
+  );
+}
+
+function ReportList({ points }: { points: string[] }) {
+  return (
+    <ul className="grid gap-2">
+      {points.map((pt, i) => (
+        <li key={i} className="flex gap-2.5 leading-relaxed">
+          <span className="mt-2.5 size-1 shrink-0 rounded-full bg-muted-foreground/60" />
+          <span className="min-w-0 break-words"><Linkified text={pt} /></span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The agent's own words: the first few points, with the rest behind a toggle. */
+function AgentReport({ text }: { text: string }) {
+  const points = reportPoints(text);
+  const head = points.slice(0, 3);
+  const rest = points.slice(3);
+  return (
+    <div className="grid gap-3 border-t border-border bg-muted/40 px-5 py-4">
+      <span className="flex items-center gap-2 font-medium"><BotIcon className="size-4 text-muted-foreground" />Agent&apos;s own report</span>
+      <ReportList points={head} />
+      {rest.length > 0 && (
+        <details className="group grid gap-2">
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">Show {rest.length} more</span>
+            <span className="hidden group-open:inline">Show less</span>
+            <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="pt-2"><ReportList points={rest} /></div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-0.5 border-border px-5 py-3 not-last:border-r max-sm:nth-2:border-r-0 max-sm:nth-[-n+2]:border-b">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="font-mono text-base tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+/** Splits the agent's run-on report into readable points (sentence / clause boundaries). */
+function reportPoints(text: string): string[] {
+  return text
+    .split(/(?<=[.;])\s+(?=[A-Z])/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+/** Renders URLs as compact links so long reports stay scannable. */
+function Linkified({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s,;)]+)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={i} href={part.replace(/[.]$/, "")} target="_blank" rel="noreferrer noopener" className="font-mono text-xs text-muted-foreground underline decoration-border underline-offset-2 hover:text-foreground">
+            {part.replace(/^https?:\/\/(www\.)?/, "").replace(/[.]$/, "")}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
   );
 }

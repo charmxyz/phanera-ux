@@ -97,7 +97,7 @@ export function SessionReplay({ events, startedAt }: { events: ReplayEvent[]; st
                 {e.error && (
                   <span className="flex items-start gap-1 text-xs text-destructive"><AlertCircleIcon className="mt-0.5 size-3 shrink-0" />{e.error}</span>
                 )}
-                {(e.action === "finish" || e.action === "give_up") && e.result && <span className="text-xs text-muted-foreground">{e.result}</span>}
+                {(e.action === "finish" || e.action === "give_up") && e.result && <span className={cn("text-xs text-muted-foreground", i !== idx && "line-clamp-3")}>{e.result}</span>}
               </span>
             </button>
           </li>

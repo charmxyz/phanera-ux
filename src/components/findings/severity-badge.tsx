@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 const SEVERITY = {
   critical: "border-destructive/40 bg-destructive/15 text-destructive",
-  high: "border-destructive/30 bg-destructive/10 text-red-300",
+  high: "border-destructive/30 bg-destructive/10 text-destructive",
   medium: "border-warning/30 bg-warning/10 text-warning",
   low: "border-border bg-secondary text-muted-foreground",
 } as const;

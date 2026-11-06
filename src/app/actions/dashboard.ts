@@ -12,6 +12,7 @@ import { generateStructured } from "@/lib/claude/client";
 import { personaPrompt } from "@/lib/claude/prompts";
 import { PersonaSchema, PersonaSuggestionsSchema, type Persona } from "@/lib/claude/schemas";
 import type { Json } from "@/types/database";
+import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -166,5 +167,39 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
     return { ok: true, testId: test.id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Something went wrong." };
+  }
+}
+
+/**
+ * Stops a test. The worker notices within a few seconds, stops the remaining personas and
+ * still writes a report from those that finished. If the worker hasn't responded after a grace
+ * period, a second click force-stops it here.
+ */
+export async function stopTest(testId: string): Promise<Result<{ state: "stopping" | "stopped" }>> {
+  try {
+    const user = await requireUser();
+    const db = createAdminClient();
+    const { data: test } = await db.from("tests").select("id, user_id, status, cancel_requested_at").eq("id", testId).maybeSingle();
+    if (!test || test.user_id !== user.id) return { ok: false, error: "Test not found." };
+    if (!["queued", "running", "evaluating"].includes(test.status)) return { ok: true, state: "stopped" };
+
+    if (test.status === "queued") {
+      // Not picked up by a worker yet: stop it outright (and refund).
+      await forceStopTest(testId, user.id);
+      revalidatePath(`/dashboard/tests/${testId}`);
+      return { ok: true, state: "stopped" };
+    }
+    if (!test.cancel_requested_at) {
+      await db.from("tests").update({ cancel_requested_at: new Date().toISOString() }).eq("id", testId);
+      return { ok: true, state: "stopping" };
+    }
+    if (Date.now() - new Date(test.cancel_requested_at).getTime() >= STOP_GRACE_MS) {
+      await forceStopTest(testId, user.id);
+      revalidatePath(`/dashboard/tests/${testId}`);
+      return { ok: true, state: "stopped" };
+    }
+    return { ok: true, state: "stopping" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not stop the test." };
   }
 }

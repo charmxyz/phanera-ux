@@ -19,6 +19,8 @@ export type AgentRunConfig = {
   maxActions: number;
   maxDurationMs: number;
   screenshots: "key" | "all";
+  /** Aborted when the user stops the test. */
+  signal?: AbortSignal;
 };
 
 export type RecordedStep = {
@@ -35,7 +37,7 @@ export type RecordedStep = {
 };
 
 export type AgentRunResult = {
-  ending: "finished" | "gave_up" | "action_limit" | "time_limit" | "error";
+  ending: "finished" | "gave_up" | "action_limit" | "time_limit" | "stopped" | "error";
   finalReport: string | null;
   steps: RecordedStep[];
   durationMs: number;
@@ -119,6 +121,22 @@ function describeElements(elements: Element[]) {
   return `In viewport:\n${inView.map(fmt).join("\n") || "(none)"}\n\nElsewhere on page:\n${rest.map(fmt).join("\n") || "(none)"}`;
 }
 
+class StepTimeoutError extends Error {}
+
+/** Rejects if `p` takes longer than `ms`, so one hung call can't freeze the whole session. */
+function within<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  let t: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    p.finally(() => clearTimeout(t)),
+    new Promise<never>((_, reject) => {
+      t = setTimeout(() => reject(new StepTimeoutError(`${what} took longer than ${Math.round(ms / 1000)}s`)), ms);
+    }),
+  ]);
+}
+
+/** Time limits for each kind of slow operation. */
+const LIMIT = { snapshot: 15_000, screenshot: 10_000, record: 20_000, decide: 75_000 };
+
 export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Promise<AgentRunResult> {
   const db = createAdminClient();
   const started = Date.now();
@@ -135,6 +153,17 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
   await guardContext(context, cfg.allowedDomain);
   const page = await context.newPage();
   page.on("dialog", (d) => d.dismiss().catch(() => {}));
+  // Last line of defence: if the session overruns its budget (or the user stops the test),
+  // close the tab so any in-flight browser call fails instead of hanging forever.
+  let killed: "time" | "stopped" | null = null;
+  const kill = (why: "time" | "stopped") => {
+    killed ??= why;
+    context.close().catch(() => {});
+  };
+  const watchdog = setTimeout(() => kill("time"), cfg.maxDurationMs + 60_000);
+  const onAbort = () => kill("stopped");
+  cfg.signal?.addEventListener("abort", onAbort, { once: true });
+  const shoot = () => within(page.screenshot({ type: "jpeg", quality: 60, timeout: LIMIT.screenshot }), LIMIT.screenshot + 2000, "Screenshot").catch(() => null);
 
   const steps: RecordedStep[] = [];
   const screenshots: AgentRunResult["screenshots"] = [];
@@ -171,6 +200,9 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
     if (insertError && /observation/i.test(insertError.message)) await db.from("session_events").insert(row);
   };
 
+  const recordSafely = (s: Omit<RecordedStep, "screenshotPath">, jpeg: Buffer | null, forceShot = false) =>
+    within(record(s, jpeg, forceShot), LIMIT.record, "Saving the step");
+
   const setActivity = (current_activity: string, action_count: number) =>
     db.from("sessions").update({ current_activity, action_count }).eq("id", cfg.sessionId);
 
@@ -185,8 +217,8 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
     } catch (e) {
       navError = e instanceof Error ? e.message.split("\n")[0] : "Navigation failed";
     }
-    const firstShot = await page.screenshot({ type: "jpeg", quality: 60 }).catch(() => null);
-    await record({ step: 0, action: "open", target: cfg.startUrl, url: page.url(), result: navError ? "error" : "loaded", reasoning: null, error: navError }, firstShot, true);
+    const firstShot = await shoot();
+    await recordSafely({ step: 0, action: "open", target: cfg.startUrl, url: page.url(), result: navError ? "error" : "loaded", reasoning: null, error: navError }, firstShot, true);
     if (navError && (page.url() === "about:blank" || page.url().startsWith("chrome-error:"))) {
       ending = "error";
       finalReport = `Could not load the starting page: ${navError}`;
@@ -202,12 +234,16 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
     });
 
     for (let i = 1; i <= cfg.maxActions; i++) {
+      if (cfg.signal?.aborted) {
+        ending = "stopped";
+        break;
+      }
       if (Date.now() - started > cfg.maxDurationMs) {
         ending = "time_limit";
         break;
       }
-      const snap = await snapshot(page).catch(() => ({ elements: [] as Element[], text: "", title: "" }));
-      const shot = await page.screenshot({ type: "jpeg", quality: 60 }).catch(() => null);
+      const snap = await within(snapshot(page), LIMIT.snapshot, "Reading the page").catch(() => ({ elements: [] as Element[], text: "", title: "" }));
+      const shot = await shoot();
 
       const content: Anthropic.Beta.BetaContentBlockParam[] = [];
       if (shot) content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: shot.toString("base64") } });
@@ -228,13 +264,17 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
         model: env.anthropicAgentModel(),
         effort: "low",
         maxTokens: 4000,
+        // A step decision should take seconds; fail fast and retry once rather than wait minutes.
+        timeoutMs: LIMIT.decide,
+        maxRetries: 1,
+        signal: cfg.signal,
       });
       await setActivity(decision.progress_note, i);
 
       if (decision.action === "finish" || decision.action === "give_up") {
         ending = decision.action === "finish" ? "finished" : "gave_up";
         finalReport = decision.final_report ?? decision.reasoning;
-        await record({ step: i, action: decision.action, target: null, url: page.url(), result: finalReport ?? "", reasoning: decision.reasoning, observation: decision.observation, error: null }, shot, true);
+        await recordSafely({ step: i, action: decision.action, target: null, url: page.url(), result: finalReport ?? "", reasoning: decision.reasoning, observation: decision.observation, error: null }, shot, true);
         break;
       }
 
@@ -280,16 +320,23 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
         result = "error";
       }
 
-      const after = await page.screenshot({ type: "jpeg", quality: 60 }).catch(() => null);
-      await record({ step: i, action: decision.action, target: targetDesc ?? null, url: page.url(), result, reasoning: decision.reasoning, observation: decision.observation, error }, after);
+      const after = await shoot();
+      await recordSafely({ step: i, action: decision.action, target: targetDesc ?? null, url: page.url(), result, reasoning: decision.reasoning, observation: decision.observation, error }, after);
       history.push(`${i}. ${decision.action}${targetDesc ? ` ${targetDesc}` : ""} → ${error ? `ERROR: ${error}` : `now at ${page.url()}`}`);
     }
   } catch (e) {
-    ending = "error";
-    finalReport = e instanceof Error ? e.message : "Agent crashed";
-    const shot = await page.screenshot({ type: "jpeg", quality: 60 }).catch(() => null);
-    await record({ step: steps.length, action: "error", target: null, url: page.url(), result: "error", reasoning: null, error: finalReport }, shot, true).catch(() => {});
+    if (killed === "stopped" || cfg.signal?.aborted) {
+      ending = "stopped";
+      finalReport = "Stopped by the user.";
+    } else {
+      ending = killed === "time" ? "time_limit" : "error";
+      finalReport = killed === "time" ? "The session ran out of time while the browser was unresponsive." : e instanceof Error ? e.message : "Agent crashed";
+      const shot = killed ? null : await shoot();
+      await recordSafely({ step: steps.length, action: "error", target: null, url: page.url(), result: "error", reasoning: null, error: finalReport }, shot, true).catch(() => {});
+    }
   } finally {
+    clearTimeout(watchdog);
+    cfg.signal?.removeEventListener("abort", onAbort);
     await context.close().catch(() => {});
   }
 

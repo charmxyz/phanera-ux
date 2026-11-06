@@ -39,7 +39,7 @@ export async function evaluateSession(input: {
       "Evaluate this session.",
     ].join("\n\n"),
   });
-  return generateStructured({ schema: SessionEvaluationSchema, system: evaluationPrompt.system, content, effort: "medium", maxTokens: 8000 });
+  return generateStructured({ schema: SessionEvaluationSchema, system: evaluationPrompt.system, content, effort: "medium", maxTokens: 8000, timeoutMs: 180_000, maxRetries: 2 });
 }
 
 export async function synthesiseFindings(input: {
@@ -52,6 +52,8 @@ export async function synthesiseFindings(input: {
     schema: FindingsReportSchema,
     system: findingsPrompt.system,
     effort: "high",
+    timeoutMs: 300_000,
+    maxRetries: 2,
     content: [
       `Test goal: ${input.testGoal}`,
       `Website facts (JSON): ${JSON.stringify(input.websiteSummary)}`,

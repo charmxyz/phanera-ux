@@ -29,6 +29,11 @@ export async function generateStructured<S extends z.ZodType>(opts: {
   model?: string;
   effort?: Effort;
   maxTokens?: number;
+  /** Aborts the request (e.g. the user stopped the test). */
+  signal?: AbortSignal;
+  /** Per-attempt timeout. The SDK default is 10 minutes, far too long for a browser step. */
+  timeoutMs?: number;
+  maxRetries?: number;
 }): Promise<z.infer<S>> {
   const model = opts.model ?? env.anthropicModel();
   const useFallbacks = FALLBACK_MODELS.has(model) && process.env.ANTHROPIC_FALLBACKS !== "off";
@@ -40,6 +45,10 @@ export async function generateStructured<S extends z.ZodType>(opts: {
     messages: [{ role: "user", content: opts.content }],
     output_config: { effort: opts.effort ?? "medium", format: betaZodOutputFormat(opts.schema) },
     ...(useFallbacks ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+  }, {
+    signal: opts.signal,
+    ...(opts.timeoutMs ? { timeout: opts.timeoutMs } : {}),
+    ...(opts.maxRetries != null ? { maxRetries: opts.maxRetries } : {}),
   });
 
   if (response.stop_reason === "refusal") {

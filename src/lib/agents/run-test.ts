@@ -6,7 +6,8 @@ import { evaluateSession, synthesiseFindings } from "@/lib/evaluation/evaluate";
 import { PersonaSchema, type Persona, type SessionEvaluation } from "@/lib/claude/schemas";
 import { BILLING_COLUMNS, effectivePlan, planLimits } from "@/lib/usage/plans";
 import { refundTestRun } from "@/lib/usage/usage";
-import type { Json, Outcome } from "@/types/database";
+import { STOPPED_SESSION_MSG } from "./stop";
+import type { Json, Outcome, TestRow } from "@/types/database";
 
 // Personas run in parallel inside one browser; lower this on small machines (~500 MB each).
 const MAX_CONCURRENT_PERSONAS = Math.max(1, Math.min(10, Number(process.env.PERSONA_CONCURRENCY) || 3));
@@ -30,6 +31,17 @@ export async function runTest(testId: string) {
 
   await db.from("tests").update({ status: "running", started_at: new Date().toISOString(), error: null }).eq("id", testId);
 
+  // The user can stop the test from the dashboard; watch for it while personas run.
+  const stop = new AbortController();
+  const watch = setInterval(async () => {
+    const { data } = await db.from("tests").select("cancel_requested_at, status").eq("id", testId).single();
+    if (data?.cancel_requested_at || data?.status === "failed") stop.abort();
+  }, 3000);
+  const stopped = () => stop.signal.aborted;
+  /** Final status writes only apply while the test is still ours (not force-stopped meanwhile). */
+  const setTest = (fields: Partial<TestRow>) =>
+    db.from("tests").update(fields).eq("id", testId).in("status", ["running", "evaluating"]);
+
   let handle: BrowserHandle | null = null;
   const results: { persona: Persona; personaName: string; run: AgentRunResult | null; evaluation: SessionEvaluation | null }[] = [];
 
@@ -38,10 +50,12 @@ export async function runTest(testId: string) {
     const browser = handle.browser;
     await db.from("sessions").update({ current_activity: "Checking the website is reachable" }).eq("test_id", testId);
     await assertBrowserCanReach(browser, cfg.startUrl ?? website.url);
+    // Queued personas fall back to "Waiting for a browser" until their turn.
+    await db.from("sessions").update({ current_activity: null }).eq("test_id", testId).eq("status", "queued");
 
     const queue = [...sessions];
     const worker = async () => {
-      while (queue.length) {
+      while (queue.length && !stopped()) {
         const session = queue.shift()!;
         const row = personas.find((p) => p.id === session.persona_id)!;
         const persona = PersonaSchema.parse({ ...(row.configuration as object), name: row.name, role: row.role, goal: row.goal });
@@ -50,7 +64,11 @@ export async function runTest(testId: string) {
         let run: AgentRunResult | null = null;
         let evaluation: SessionEvaluation | null = null;
         try {
-          run = await runPersonaAgent(browser, {
+          // Second line of defence on top of the agent's own watchdog.
+          const budget = limits.maxDurationMsPerPersona + 3 * 60_000;
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          run = await Promise.race([
+            runPersonaAgent(browser, {
             sessionId: session.id,
             userId: test.user_id,
             startUrl: cfg.startUrl ?? website.url,
@@ -60,7 +78,20 @@ export async function runTest(testId: string) {
             maxActions: limits.maxActionsPerPersona,
             maxDurationMs: limits.maxDurationMsPerPersona,
             screenshots: limits.screenshots,
-          });
+            signal: stop.signal,
+          }),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(new Error("The persona's browser stopped responding.")), budget);
+            }),
+          ]).finally(() => clearTimeout(timer));
+          if (stopped() || run.ending === "stopped") {
+            await db
+              .from("sessions")
+              .update({ status: "failed", error: STOPPED_SESSION_MSG, current_activity: null, duration_ms: run.durationMs, completed_at: new Date().toISOString() })
+              .eq("id", session.id);
+            results.push({ persona, personaName: row.name, run: null, evaluation: null });
+            continue;
+          }
           await db.from("sessions").update({ current_activity: "Evaluating session" }).eq("id", session.id);
           evaluation = await evaluateSession({ persona, testGoal: test.goal, websiteSummary: website.summary, run });
 
@@ -90,6 +121,9 @@ export async function runTest(testId: string) {
       }
     };
     await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT_PERSONAS, sessions.length) }, worker));
+    if (stopped()) {
+      await db.from("sessions").update({ status: "failed", error: STOPPED_SESSION_MSG, current_activity: null }).eq("test_id", testId).in("status", ["queued", "running"]);
+    }
   } catch (e) {
     // Could not acquire a browser at all: fail every pending session, refund usage.
     const msg = e instanceof Error ? e.message : "Browser environment failed";
@@ -98,17 +132,22 @@ export async function runTest(testId: string) {
     await refundTestRun(test.user_id, testId);
     throw e;
   } finally {
+    clearInterval(watch);
     await handle?.release();
   }
 
   const usable = results.filter((r) => r.run && r.evaluation);
   if (usable.length === 0) {
-    await db.from("tests").update({ status: "failed", error: "No persona session completed successfully.", completed_at: new Date().toISOString() }).eq("id", testId);
+    const error = stopped()
+      ? "Stopped before any persona finished. This run wasn't counted against your usage."
+      : "No persona session completed successfully.";
+    await setTest({ status: "failed", error, completed_at: new Date().toISOString() });
     await refundTestRun(test.user_id, testId);
     return;
   }
 
-  await db.from("tests").update({ status: "evaluating" }).eq("id", testId);
+  // If stopped, the report is still written from the personas that finished.
+  await setTest({ status: "evaluating" });
   const measured = (website.readiness as { measured?: unknown } | null)?.measured ?? null;
 
   try {
@@ -140,9 +179,7 @@ export async function runTest(testId: string) {
 
     const outcomes = usable.map((r) => r.evaluation!.outcome);
     const count = (o: string) => outcomes.filter((x) => x === o).length;
-    await db
-      .from("tests")
-      .update({
+    await setTest({
         status: usable.length < results.length ? "partial" : "complete",
         completed_at: new Date().toISOString(),
         summary: {
@@ -157,10 +194,10 @@ export async function runTest(testId: string) {
             inconclusive: count("inconclusive") + (results.length - usable.length),
           },
         } as unknown as Json,
-      })
-      .eq("id", testId);
+        ...(stopped() ? { error: "Stopped early. This report covers the personas that finished." } : {}),
+      });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Findings generation failed";
-    await db.from("tests").update({ status: "partial", error: `Sessions recorded, but the report could not be generated: ${msg}`, completed_at: new Date().toISOString() }).eq("id", testId);
+    await setTest({ status: "partial", error: `Sessions recorded, but the report could not be generated: ${msg}`, completed_at: new Date().toISOString() });
   }
 }

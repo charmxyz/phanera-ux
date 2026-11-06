@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runDiscovery } from "@/lib/discovery/run";
 import { runTest } from "@/lib/agents/run-test";
 import { refundTestRun } from "@/lib/usage/usage";
+import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
 import type { DiscoveryStatus } from "@/types/database";
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS) || 3000;
@@ -68,6 +69,16 @@ async function failStaleJobs() {
     await refundTestRun(t.user_id, t.id);
     log("failed stale test", t.id);
   }
+  // Stop requests the running job never picked up (e.g. it was stuck) are applied here.
+  const { data: stuck } = await db
+    .from("tests")
+    .select("id, user_id")
+    .in("status", ["queued", "running", "evaluating"])
+    .lt("cancel_requested_at", new Date(now - 2 * STOP_GRACE_MS).toISOString());
+  for (const t of stuck ?? []) {
+    await forceStopTest(t.id, t.user_id);
+    log("force-stopped test", t.id);
+  }
   const { data: sites } = await db
     .from("websites")
     .select("id")
@@ -108,7 +119,7 @@ async function main() {
   let lastStaleCheck = 0;
   while (!stopping) {
     try {
-      if (Date.now() - lastStaleCheck > 5 * 60_000) {
+      if (Date.now() - lastStaleCheck > 60_000) {
         lastStaleCheck = Date.now();
         await failStaleJobs();
       }

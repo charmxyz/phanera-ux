@@ -79,6 +79,7 @@ export type TestRow = {
   completed_at: string | null;
   share_token: string | null;
   shared_at: string | null;
+  cancel_requested_at: string | null;
 };
 
 export type PersonaRow = {

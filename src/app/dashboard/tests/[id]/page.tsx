@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BotIcon, MonitorIcon, SmartphoneIcon, InfoIcon } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -14,6 +14,8 @@ import { SessionsTab } from "@/components/sessions/sessions-tab";
 import { ReportOverview, type ReportSummary } from "@/components/report/overview";
 import { FindingsList } from "@/components/report/findings-list";
 import { ShareButton } from "@/components/report/share-button";
+import { StopTestButton } from "@/components/dashboard/stop-test-button";
+import { STOP_GRACE_MS } from "@/lib/agents/stop";
 import { env } from "@/lib/env";
 import { getTestBundle, requireSession, signedScreenshotUrls, formatDate, formatDuration } from "@/lib/dashboard/queries";
 import type { Persona } from "@/lib/claude/schemas";
@@ -91,7 +93,16 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
         <Card>
           <CardHeader>
             <CardTitle>{doneCount} of {sessions.length} personas completed</CardTitle>
-            <CardDescription>{test.status === "evaluating" ? "All sessions recorded. Evaluating evidence and writing findings…" : "Agents are exploring the website in isolated browsers. Statuses update live."}</CardDescription>
+            <CardDescription>
+              {test.cancel_requested_at
+                ? "Stopping… unfinished personas are being stopped, and a report is written from the ones that finished."
+                : test.status === "evaluating"
+                  ? "All sessions recorded. Evaluating evidence and writing findings…"
+                  : "Agents are exploring the website in isolated browsers. Statuses update live."}
+            </CardDescription>
+            <CardAction>
+              <StopTestButton testId={test.id} requestedAt={test.cancel_requested_at} graceMs={STOP_GRACE_MS} />
+            </CardAction>
           </CardHeader>
           <CardContent className="grid gap-3">
             {/* The colony at work: same voxel ants as the homepage CTA (2D pixel ants without WebGL). */}

@@ -27,10 +27,27 @@ export const env = {
   daytonaApiKey: () => optional("DAYTONA_API_KEY"),
   daytonaApiUrl: () => optional("DAYTONA_API_URL"),
   triggerSecretKey: () => optional("TRIGGER_SECRET_KEY"),
+  stripeSecretKey: () => optional("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: () => optional("STRIPE_WEBHOOK_SECRET"),
+  stripePriceId: () => optional("STRIPE_PRICE_ID"),
+  paypalClientId: () => optional("PAYPAL_CLIENT_ID"),
+  paypalClientSecret: () => optional("PAYPAL_CLIENT_SECRET"),
+  paypalPlanId: () => optional("PAYPAL_PLAN_ID"),
+  paypalWebhookId: () => optional("PAYPAL_WEBHOOK_ID"),
+  /** "live" for real payments; anything else uses the PayPal sandbox. */
+  paypalLive: () => optional("PAYPAL_ENV") === "live",
   /** Dev-only escape hatch: run Chromium locally instead of in a Daytona sandbox. */
   allowLocalBrowser: () =>
     process.env.NODE_ENV !== "production" && optional("ALLOW_LOCAL_BROWSER") === "true",
 };
+
+export function isStripeConfigured() {
+  return Boolean(env.stripeSecretKey() && env.stripePriceId());
+}
+
+export function isPaypalConfigured() {
+  return Boolean(env.paypalClientId() && env.paypalClientSecret() && env.paypalPlanId());
+}
 
 export function isSupabaseConfigured() {
   return Boolean(optional("NEXT_PUBLIC_SUPABASE_URL") && optional("NEXT_PUBLIC_SUPABASE_ANON_KEY"));

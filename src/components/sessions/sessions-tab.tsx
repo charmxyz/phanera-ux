@@ -22,7 +22,8 @@ export type SessionTabItem = {
   events: ReplayEvent[];
 };
 
-export function SessionsTab({ testId, sessions }: { testId: string; sessions: SessionTabItem[] }) {
+/** `sessionBase` is the path that session ids are appended to (dashboard or public share page). */
+export function SessionsTab({ sessionBase, sessions }: { sessionBase: string; sessions: SessionTabItem[] }) {
   const [active, setActive] = useState(sessions[0]?.id);
   const s = sessions.find((x) => x.id === active);
   return (
@@ -54,7 +55,7 @@ export function SessionsTab({ testId, sessions }: { testId: string; sessions: Se
             </div>
             <span className="ml-auto flex items-center gap-4">
               {s.outcome ? <OutcomeLabel outcome={s.outcome} /> : <StatusLabel status={s.status} />}
-              <Link href={`/dashboard/tests/${testId}/sessions/${s.id}`} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent">
+              <Link href={`${sessionBase}/${s.id}`} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent">
                 Full session <ArrowRightIcon className="size-3" />
               </Link>
             </span>

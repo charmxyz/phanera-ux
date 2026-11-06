@@ -25,10 +25,10 @@ importers:
         version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0)
       '@supabase/ssr':
         specifier: ^0.12.7
-        version: 0.12.7(@supabase/supabase-js@2.118.0(@opentelemetry/api@1.10.0))
+        version: 0.12.7(@supabase/supabase-js@2.118.0(@opentelemetry/api@1.9.1))
       '@supabase/supabase-js':
         specifier: ^2.118.0
-        version: 2.118.0(@opentelemetry/api@1.10.0)
+        version: 2.118.0(@opentelemetry/api@1.9.1)
       '@trigger.dev/sdk':
         specifier: ^4.8.3
         version: 4.8.3(react@19.3.0)(zod@4.6.7)
@@ -52,7 +52,7 @@ importers:
         version: 14.9.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next:
         specifier: 16.4.4
-        version: 16.4.4(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@20.19.43)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 16.4.4(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -74,6 +74,9 @@ importers:
       sonner:
         specifier: ^2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      stripe:
+        specifier: ^23.1.0
+        version: 23.1.0(@types/node@20.19.43)
       three:
         specifier: ^0.187.0
         version: 0.187.0
@@ -4598,6 +4601,15 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
+  stripe@23.1.0:
+    resolution: {integrity: sha512-fVUfMSfTPoukfoV//MUKAx2+YxyKmYaYtnAL9VkfnHfaPNQylFdWZMD+zgUFerI8rjbaiER8Vzj2XEUQ2AhAsQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
     engines: {node: '>= 12.0.0'}
@@ -6607,9 +6619,9 @@ snapshots:
       '@supabase/phoenix': 0.4.5
       tslib: 2.8.1
 
-  '@supabase/ssr@0.12.7(@supabase/supabase-js@2.118.0(@opentelemetry/api@1.10.0))':
+  '@supabase/ssr@0.12.7(@supabase/supabase-js@2.118.0(@opentelemetry/api@1.9.1))':
     dependencies:
-      '@supabase/supabase-js': 2.118.0(@opentelemetry/api@1.10.0)
+      '@supabase/supabase-js': 2.118.0(@opentelemetry/api@1.9.1)
       cookie: 1.1.1
 
   '@supabase/storage-js@2.118.0':
@@ -6617,7 +6629,7 @@ snapshots:
       iceberg-js: 0.8.1
       tslib: 2.8.1
 
-  '@supabase/supabase-js@2.118.0(@opentelemetry/api@1.10.0)':
+  '@supabase/supabase-js@2.118.0(@opentelemetry/api@1.9.1)':
     dependencies:
       '@supabase/auth-js': 2.118.0
       '@supabase/functions-js': 2.118.0
@@ -6625,7 +6637,7 @@ snapshots:
       '@supabase/realtime-js': 2.118.0
       '@supabase/storage-js': 2.118.0
     optionalDependencies:
-      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/api': 1.9.1
 
   '@swc/helpers@0.5.23':
     dependencies:
@@ -9095,7 +9107,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
-  next@16.4.4(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@20.19.43)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  next@16.4.4(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       '@next/env': 16.4.4
       '@swc/helpers': 0.5.23
@@ -9114,7 +9126,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.4.4
       '@next/swc-win32-arm64-msvc': 16.4.4
       '@next/swc-win32-x64-msvc': 16.4.4
-      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/api': 1.9.1
       sharp: 0.35.5(@types/node@20.19.43)
     transitivePeerDependencies:
       - '@babel/core'
@@ -9943,6 +9955,10 @@ snapshots:
   strip-final-newline@4.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@23.1.0(@types/node@20.19.43):
+    optionalDependencies:
+      '@types/node': 20.19.43
 
   styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.3.0):
     dependencies:

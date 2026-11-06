@@ -303,8 +303,8 @@ const TIERS = [
     features: ["5 lifetime test runs", "Up to 3 personas per run", "10 pages per website scan", "Basic findings", "Shareable report"],
   },
   {
-    name: "Startup", price: "£99", period: "/month", cta: "Coming soon", href: null, available: false, highlight: true,
-    features: ["40 snapshot audits per month", "10 live browser tests per month", "Up to 10 personas per live run", "50 pages per audit", "Full session evidence", "Detailed findings", "PDF reports"],
+    name: "Startup", price: "£99", period: "/month", cta: "Upgrade", href: "/dashboard/settings#billing", available: true, highlight: true,
+    features: ["10 test runs every month", "Up to 10 personas per test", "50 pages per website scan", "Longer sessions: 20 actions, 8 minutes per persona", "Screenshots of every step", "Pay by card or PayPal"],
   },
   {
     name: "Enterprise", price: "Custom", period: "", cta: "Contact us", href: "mailto:hello@phanera.app", available: true,
@@ -353,7 +353,7 @@ const FAQS = [
   ["Does Phanera test whether AI can understand my website?", "Yes. Every test includes an AI assistant persona and an agent-readiness report covering content discovery, semantic structure, navigation and comprehension. Measured signals are shown separately from interpretation."],
   ["Can I test any website?", "Any publicly reachable website. Phanera doesn't test pages behind a login, localhost or private networks, and agents never make purchases or submit forms that change data."],
   ["How long does a test take?", "Discovery usually takes under a minute. A test with three personas typically finishes in a few minutes; you can watch progress live."],
-  ["How much does Phanera cost?", "The Free plan includes 5 test runs with up to 3 personas each. Paid plans with higher limits are coming soon."],
+  ["How much does Phanera cost?", "The Free plan includes 5 test runs with up to 3 personas each. The Startup plan is £99/month for 10 test runs a month with up to 10 personas each, paid by card or PayPal and cancellable anytime."],
 ];
 
 export function FAQ() {

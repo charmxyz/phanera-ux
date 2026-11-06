@@ -4,7 +4,7 @@ import { acquireBrowser, assertBrowserCanReach, type BrowserHandle } from "@/lib
 import { runPersonaAgent, type AgentRunResult } from "./persona-agent";
 import { evaluateSession, synthesiseFindings } from "@/lib/evaluation/evaluate";
 import { PersonaSchema, type Persona, type SessionEvaluation } from "@/lib/claude/schemas";
-import { planLimits } from "@/lib/usage/plans";
+import { BILLING_COLUMNS, effectivePlan, planLimits } from "@/lib/usage/plans";
 import { refundTestRun } from "@/lib/usage/usage";
 import type { Json, Outcome } from "@/types/database";
 
@@ -22,10 +22,10 @@ export async function runTest(testId: string) {
     db.from("websites").select("*").eq("id", test.website_id).single(),
     db.from("personas").select("*").eq("test_id", testId),
     db.from("sessions").select("*").eq("test_id", testId),
-    db.from("profiles").select("plan").eq("id", test.user_id).single(),
+    db.from("profiles").select(BILLING_COLUMNS).eq("id", test.user_id).single(),
   ]);
   if (!website || !personas || !sessions) throw new Error("Test data incomplete");
-  const limits = planLimits(profile?.plan);
+  const limits = planLimits(effectivePlan(profile));
   const cfg = (test.configuration ?? {}) as { startUrl?: string };
 
   await db.from("tests").update({ status: "running", started_at: new Date().toISOString(), error: null }).eq("id", testId);

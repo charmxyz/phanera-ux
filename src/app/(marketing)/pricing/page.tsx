@@ -8,7 +8,7 @@ export default function PricingPage() {
     <>
       <div className="container-reading pt-24 text-center">
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Pricing</h1>
-        <p className="mt-4 text-muted-foreground sm:text-lg">Start free with real browser tests. Paid plans with higher limits are coming soon.</p>
+        <p className="mt-4 text-muted-foreground sm:text-lg">Start free with real browser tests. Upgrade when you need more.</p>
       </div>
       <Pricing heading={false} />
       <FAQ />

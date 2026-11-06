@@ -1,11 +1,12 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { planLimits } from "./plans";
+import { BILLING_COLUMNS, effectivePlan, planLimits } from "./plans";
 
 export async function getUsageSummary(userId: string) {
   const db = createAdminClient();
-  const { data: profile } = await db.from("profiles").select("plan").eq("id", userId).single();
-  const limits = planLimits(profile?.plan);
+  const { data: profile } = await db.from("profiles").select(BILLING_COLUMNS).eq("id", userId).single();
+  const plan = effectivePlan(profile);
+  const limits = planLimits(plan);
   const monthStart = new Date();
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
@@ -16,7 +17,7 @@ export async function getUsageSummary(userId: string) {
   const used = (data ?? []).reduce((a, r) => a + r.quantity, 0);
   const allowance = limits.lifetimeTestRuns ?? limits.monthlyTestRuns ?? 0;
   return {
-    plan: profile?.plan ?? "free",
+    plan,
     limits,
     used,
     allowance,

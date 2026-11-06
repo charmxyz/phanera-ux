@@ -52,7 +52,10 @@ export function AppSidebar({ email, planLabel, used, allowance, period }: { emai
             <span className="text-muted-foreground">{remaining} of {allowance} left</span>
           </div>
           <Progress value={allowance ? (used / allowance) * 100 : 0} className="h-1" />
-          <p className="text-xs text-muted-foreground">Test runs {period === "lifetime" ? "included" : "this month"}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Test runs {period === "lifetime" ? "included" : "this month"}</p>
+            {planLabel === "Free" && <Link href="/dashboard/settings#billing" className="text-xs font-medium hover:underline">Upgrade</Link>}
+          </div>
         </div>
         <div className="flex items-center gap-2 px-1">
           <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={email}>{email}</span>

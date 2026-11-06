@@ -4,7 +4,7 @@ import { crawlWebsite, measureReadiness } from "./crawl";
 import { generateStructured } from "@/lib/claude/client";
 import { websiteSummaryPrompt, personaPrompt } from "@/lib/claude/prompts";
 import { WebsiteAnalysisSchema, PersonaSuggestionsSchema } from "@/lib/claude/schemas";
-import { planLimits } from "@/lib/usage/plans";
+import { BILLING_COLUMNS, effectivePlan, planLimits } from "@/lib/usage/plans";
 import type { DiscoveryStatus, Json } from "@/types/database";
 
 /** Runs a full website discovery. Executed by a background worker, never inside a request. */
@@ -12,8 +12,8 @@ export async function runDiscovery(websiteId: string) {
   const db = createAdminClient();
   const { data: website, error } = await db.from("websites").select("*").eq("id", websiteId).single();
   if (error || !website) throw new Error(`Website ${websiteId} not found`);
-  const { data: profile } = await db.from("profiles").select("plan").eq("id", website.user_id).single();
-  const limits = planLimits(profile?.plan);
+  const { data: profile } = await db.from("profiles").select(BILLING_COLUMNS).eq("id", website.user_id).single();
+  const limits = planLimits(effectivePlan(profile));
 
   const setStatus = (discovery_status: DiscoveryStatus, extra: Record<string, unknown> = {}) =>
     db.from("websites").update({ discovery_status, updated_at: new Date().toISOString(), ...extra }).eq("id", websiteId);

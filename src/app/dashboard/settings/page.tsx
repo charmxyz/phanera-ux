@@ -5,10 +5,13 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { requireSession, formatDate } from "@/lib/dashboard/queries";
 import { getUsageSummary } from "@/lib/usage/usage";
+import { BillingCard } from "@/components/billing/billing-card";
+import { isPaypalConfigured, isStripeConfigured } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: PageProps<"/dashboard/settings">) {
+  const sp = await searchParams;
   const { supabase, user } = await requireSession();
   const [{ data: profile }, usage] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
@@ -26,10 +29,19 @@ export default async function SettingsPage() {
           <Row label="Sign-in method">Email magic link</Row>
         </CardContent>
       </Card>
+      {profile && (
+        <BillingCard
+          profile={profile}
+          plan={usage.plan}
+          notice={typeof sp.billing === "string" ? sp.billing : undefined}
+          stripeEnabled={isStripeConfigured()}
+          paypalEnabled={isPaypalConfigured()}
+        />
+      )}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">{l.label} plan</CardTitle>
-          <CardDescription>Paid plans are coming soon.</CardDescription>
+          <CardTitle className="text-sm">Usage</CardTitle>
+          <CardDescription>{l.label} plan limits</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm">
           <div className="grid gap-2">

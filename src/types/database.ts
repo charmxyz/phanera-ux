@@ -22,6 +22,12 @@ export type ProfileRow = {
   id: string;
   email: string;
   plan: "free" | "startup";
+  billing_provider: "stripe" | "paypal" | "comp" | null;
+  stripe_customer_id: string | null;
+  subscription_id: string | null;
+  subscription_status: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -71,6 +77,8 @@ export type TestRow = {
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
+  share_token: string | null;
+  shared_at: string | null;
 };
 
 export type PersonaRow = {

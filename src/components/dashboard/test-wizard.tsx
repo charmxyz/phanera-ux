@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BotIcon, Loader2Icon, MonitorIcon, PencilIcon, PlusIcon, RefreshCwIcon, ShieldCheckIcon, SmartphoneIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
@@ -182,7 +183,8 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
         {outOfUsage && (
           <Alert variant="destructive" className="mt-3">
             <AlertDescription>
-              You&apos;ve used all {usage.allowance} test runs {usage.period === "lifetime" ? `included in the ${limits.planLabel} plan` : "for this month"}. Paid plans are coming soon.
+              You&apos;ve used all {usage.allowance} test runs {usage.period === "lifetime" ? `included in the ${limits.planLabel} plan` : "for this month"}.{" "}
+              {usage.period === "lifetime" && <Link href="/dashboard/settings#billing" className="font-medium underline underline-offset-2">Upgrade to Startup</Link>}
             </AlertDescription>
           </Alert>
         )}

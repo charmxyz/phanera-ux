@@ -1,6 +1,6 @@
 # Phanera — local setup
 
-The product spec lives in [docs/PRD.md](docs/PRD.md) and the technical reference in [README.md](README.md). This file covers setting up the services.
+The technical reference is in [README.md](README.md). This file covers setting up the services.
 
 ## 1. Install
 

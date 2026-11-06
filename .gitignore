@@ -43,3 +43,6 @@ next-env.d.ts
 
 # trigger.dev local build cache
 .trigger
+
+# private product spec (kept locally, not published)
+docs/PRD.md

@@ -52,7 +52,7 @@ export async function assertPublicUrl(input: string): Promise<string> {
 }
 
 const UA =
-  "Mozilla/5.0 (compatible; PhaneraBot/0.1; +https://phanera.app/bot) AppleWebKit/537.36 (KHTML, like Gecko)";
+  "Mozilla/5.0 (compatible; PhaneraBot/0.1; +https://www.phanera.com) AppleWebKit/537.36 (KHTML, like Gecko)";
 
 /**
  * fetch() that re-validates every redirect hop against the network policy,

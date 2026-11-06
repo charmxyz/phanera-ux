@@ -2,7 +2,7 @@
 
 **Find where visitors get stuck.** Phanera sends simulated visitors (personas) through a live website in real browsers, records every step, and turns what happened into a ranked list of issues with screenshots and suggested fixes.
 
-- Product spec: [docs/PRD.md](docs/PRD.md)
+- Product spec: kept private (local `docs/PRD.md`, not in the repository)
 - Step-by-step account setup (Supabase, Resend, Railway, Vercel): [SETUP.md](SETUP.md)
 
 This README is the technical reference: architecture, data model, every pipeline, and how to run and deploy it. It contains no secrets; environment variables are listed by name only.
@@ -125,7 +125,7 @@ Key design decisions:
 │   ├── smoke-discovery.ts       # Manual smoke test for discovery
 │   └── smoke-browser.ts         # Manual smoke test for the browser provider
 ├── supabase/migrations/         # SQL migrations (run in order)
-├── docs/PRD.md                  # Product requirements
+├── docs/promo/                  # Hackathon promo images
 ├── SETUP.md                     # Account/service setup guide
 └── src/
     ├── proxy.ts                 # Session refresh + /dashboard protection

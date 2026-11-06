@@ -274,7 +274,7 @@ const TIERS = [
     features: ["10 usability tests every month", "Up to 10 AI personas per test", "50 pages per website analysis", "Longer sessions: 20 actions, 8 minutes per persona", "Screenshots of every step", "Pay by card or PayPal"],
   },
   {
-    name: "Enterprise", price: "Custom", period: "", cta: "Contact us", href: "mailto:hello@phanera.app", available: true,
+    name: "Enterprise", price: "Custom", period: "", cta: "Contact us", href: "mailto:firdaussaffan@gmail.com", available: true,
     features: ["Higher usage limits", "Custom deployment requirements", "Advanced integrations", "Team features"],
   },
 ];

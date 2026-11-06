@@ -101,12 +101,12 @@ export default async function SharedReportPage({ params }: PageProps<"/r/[token]
       </header>
 
       {/* ------------------------------------------------------------- Issues */}
-      <Section n="01" id="issues" title="Issues" description="Sorted by urgency. Open a ticket for the evidence and the recommended fix.">
-        {tickets.length ? <IssueBoard tickets={tickets} /> : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No website issues were found in these sessions.</p>}
+      <Section id="issues" title="Issues" description="Sorted by urgency. Open a ticket for the evidence and the recommended fix.">
+        {tickets.length ? <IssueBoard tickets={tickets} personas={personas.map((p) => ({ name: p.name, role: p.role }))} /> : <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No website issues were found in these sessions.</p>}
       </Section>
 
       {/* ----------------------------------------------------------- Sessions */}
-      <Section n="02" id="sessions" title="Sessions" description="Pick a persona to see what they did, step by step, with screenshots.">
+      <Section id="sessions" title="Sessions" description="Pick a persona to see what they did, step by step, with screenshots.">
         <SessionSwitcher
           items={sessions.map((s) => {
             const p = personaById.get(s.persona_id);
@@ -125,11 +125,10 @@ export default async function SharedReportPage({ params }: PageProps<"/r/[token]
   );
 }
 
-function Section({ n, id, title, description, children }: { n: string; id: string; title: string; description: string; children: React.ReactNode }) {
+function Section({ id, title, description, children }: { id: string; title: string; description: string; children: React.ReactNode }) {
   return (
     <section id={id} className="grid scroll-mt-20 gap-6 border-t border-border py-12 sm:py-16">
       <div className="grid gap-1.5">
-        <span className="font-mono text-xs text-muted-foreground">{n}</span>
         <h2 className="text-3xl font-medium tracking-[-0.02em]">{title}</h2>
         <p className="text-muted-foreground">{description}</p>
       </div>

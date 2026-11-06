@@ -5,13 +5,13 @@ import { cn } from "@/lib/utils";
  * The agent's own final report, made scannable: the run-on text is split into points,
  * labelled sections ("Gaps: …", "Key pages: …") get a heading, and URLs become short links.
  */
-export function AgentReport({ text, className, preview = 3 }: { text: string; className?: string; preview?: number }) {
+export function AgentReport({ text, className, preview = 3, heading = true }: { text: string; className?: string; preview?: number; heading?: boolean }) {
   const points = reportPoints(text);
   const head = points.slice(0, preview);
   const rest = points.slice(preview);
   return (
     <div className={cn("grid gap-3", className)}>
-      <span className="flex items-center gap-2 text-sm font-medium"><BotIcon className="size-4 text-muted-foreground" />Agent&apos;s own report</span>
+      {heading && <span className="flex items-center gap-2 text-sm font-medium"><BotIcon className="size-4 text-muted-foreground" />Agent&apos;s own report</span>}
       <ReportList points={head} />
       {rest.length > 0 && (
         <details className="group">

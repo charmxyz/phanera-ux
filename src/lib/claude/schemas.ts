@@ -61,7 +61,7 @@ export const AgentStepSchema = z.object({
   final_report: z
     .string()
     .nullable()
-    .describe("Only for finish/give_up: what you achieved or what blocked you, citing what you saw"),
+    .describe("Only for finish/give_up: what you found or what blocked you, citing what you saw. Short notes, max 80 words."),
 });
 export type AgentStep = z.infer<typeof AgentStepSchema>;
 
@@ -70,14 +70,16 @@ export const OUTCOMES = ["success", "partial_success", "failed", "abandoned", "b
 
 export const SessionEvaluationSchema = z.object({
   outcome: z.enum(OUTCOMES),
-  rationale: z.string(),
+  summary: z.string().describe("One plain sentence, max 20 words: did the persona reach the goal, and how. No hedging."),
+  key_points: z.array(z.string()).describe("2-4 short facts behind the verdict, max 12 words each, e.g. 'Hero defines an Org in the first screen'"),
+  rationale: z.string().describe("Your reasoning, max 2 short sentences. Mention evidence gaps only if they change the outcome."),
   cause: z
     .enum(["website", "agent", "environment", "none"])
     .describe("Primary cause of any failure: a website problem, an agent mistake/timeout, or the test environment"),
   observations: z.array(
     z.object({
       step: z.number().nullable(),
-      issue: z.string(),
+      issue: z.string().describe("One short sentence, max 25 words"),
       is_website_issue: z.boolean(),
       directly_observed: z.boolean().describe("True only if a recorded step or screenshot shows it"),
     }),
@@ -86,21 +88,21 @@ export const SessionEvaluationSchema = z.object({
 export type SessionEvaluation = z.infer<typeof SessionEvaluationSchema>;
 
 export const FindingsReportSchema = z.object({
-  conclusion: z.string().describe("2-3 sentence plain-language conclusion"),
+  conclusion: z.string().describe("Answer the test goal in max 2 short sentences (max 40 words). Plain language, no hedging."),
   findings: z.array(
     z.object({
-      title: z.string(),
-      description: z.string(),
+      title: z.string().describe("Specific problem, max 12 words"),
+      description: z.string().describe("What goes wrong and why it matters to visitors, max 2 short sentences"),
       category: z.enum(["navigation", "content", "conversion", "accessibility", "performance", "agent_readiness", "trust", "other"]),
       severity: z.enum(["critical", "high", "medium", "low"]),
       confidence: z.enum(["confirmed", "likely", "hypothesis"]),
-      impacted_personas: z.array(z.string()),
+      impacted_personas: z.array(z.string().describe("Persona first name only")),
       page_url: z.string().nullable(),
-      evidence: z.array(z.object({ persona: z.string(), step: z.number().nullable(), note: z.string() })),
-      recommendation: z.string(),
+      evidence: z.array(z.object({ persona: z.string().describe("Persona first name only"), step: z.number().nullable(), note: z.string().describe("What was seen, max 15 words") })),
+      recommendation: z.string().describe("The concrete fix, max 35 words, starting with a verb"),
     }),
   ),
-  top_fixes: z.array(z.string()),
+  top_fixes: z.array(z.string().describe("Max 15 words")),
   readiness_interpretation: z.array(
     z.object({
       area: z.enum([
@@ -108,7 +110,7 @@ export const FindingsReportSchema = z.object({
         "content_comprehension", "rendering", "structured_information",
       ]),
       status: z.enum(["good", "needs_work", "poor", "unknown"]),
-      interpretation: z.string(),
+      interpretation: z.string().describe("Max 2 short sentences"),
     }),
   ),
 });

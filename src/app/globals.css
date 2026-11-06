@@ -89,6 +89,15 @@
   color-scheme: light;
 }
 
+/* Plain white surface for the dashboard and shared reports (the marketing site keeps the
+   grey studio theme). Set on body, so sheets and dialogs portalled outside the page match. */
+body:has([data-surface="white"]) {
+  --background: #ffffff;
+  --sidebar: #fafafa;
+  --sidebar-accent: #efeff1;
+  --sidebar-border: #ececee;
+}
+
 /* Soft studio glow behind the voxel scenes. It always falls off to the page
    background, so sections meet without visible edges. */
 .bg-studio {

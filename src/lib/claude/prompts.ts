@@ -110,6 +110,7 @@ export const evaluationPrompt = {
     AUTOMATION_RULE,
     "If an automation error stopped the agent from checking something, judge the outcome on what it could see, and mention the gap as agent/environment, not as a website issue.",
     "Observations are problems or friction only. Do not list things that worked well as observations.",
+    "Write for a busy site owner: short, concrete, no hedging, no repetition. Never narrate step by step in the summary or rationale.",
     UNTRUSTED_RULE,
   ].join("\n"),
 };
@@ -122,6 +123,7 @@ export const findingsPrompt = {
     "Focus on what matters to the site owner: (1) user experience and behaviour, meaning where personas hesitated, backtracked, misread or couldn't find something; (2) content strategy, meaning unclear or missing messaging, gaps between what each persona needed (their motivation) and what the site says, weak calls to action, trust and proof; (3) verified functional bugs: broken links, error pages, controls that do nothing.",
     AUTOMATION_RULE,
     "Never turn an automation error into a finding. Never report a strength or something that worked as a finding; findings are problems to fix.",
+    "Write for a busy site owner: short, concrete sentences, no hedging, no repetition. Respect the length limits on every field.",
     "Severity: critical = essential task blocked by a confirmed problem; high = significant usability/functional issue; medium = meaningful friction with a workaround; low = minor improvement.",
     "Confidence: confirmed only when a recorded step or screenshot directly shows it; likely when strongly implied; hypothesis otherwise.",
     "Every finding must cite evidence (persona + step) and give a specific, actionable recommendation.",

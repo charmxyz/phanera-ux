@@ -1,24 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BotIcon, MonitorIcon, SmartphoneIcon, InfoIcon } from "lucide-react";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 import { AntAvatar } from "@/components/ants/pixel-ant";
 import { AntMarch } from "@/components/landing/ants/ant-march";
-import { ACTIVE_TEST, OutcomeLabel, StatusLabel } from "@/components/sessions/status";
-import { SessionsTab } from "@/components/sessions/sessions-tab";
-import { ReportOverview, type ReportSummary } from "@/components/report/overview";
-import { FindingsList } from "@/components/report/findings-list";
+import { ACTIVE_TEST, StatusLabel } from "@/components/sessions/status";
+import type { ReportSummary } from "@/components/report/verdict";
+import { ReportBody, ReportSection } from "@/components/report/report-body";
 import { ShareButton } from "@/components/report/share-button";
 import { StopTestButton } from "@/components/dashboard/stop-test-button";
 import { STOP_GRACE_MS } from "@/lib/agents/stop";
 import { env } from "@/lib/env";
-import { getTestBundle, requireSession, signedScreenshotUrls, formatDate, formatDuration } from "@/lib/dashboard/queries";
-import type { Persona } from "@/lib/claude/schemas";
+import { getTestBundle, requireSession, signedScreenshotUrls, formatDate } from "@/lib/dashboard/queries";
 import type { MeasuredReadiness } from "@/lib/discovery/crawl";
 import { MeasuredTable } from "@/components/dashboard/measured-table";
 import type { SessionEventRow } from "@/types/database";
@@ -36,9 +32,8 @@ const READINESS_LABEL: Record<string, string> = {
   structured_information: "Structured information",
 };
 
-export default async function TestPage({ params, searchParams }: PageProps<"/dashboard/tests/[id]">) {
+export default async function TestPage({ params }: PageProps<"/dashboard/tests/[id]">) {
   const { id } = await params;
-  const sp = await searchParams;
   const { test, website, personas, sessions, findings } = await getTestBundle(id);
   const { supabase } = await requireSession();
   const active = ACTIVE_TEST.includes(test.status);
@@ -55,7 +50,6 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
   const eventsBySession = new Map<string, SessionEventRow[]>();
   for (const e of events ?? []) eventsBySession.set(e.session_id, [...(eventsBySession.get(e.session_id) ?? []), e]);
 
-  const tab = typeof sp.tab === "string" ? sp.tab : "overview";
   const measured = (website.readiness as { measured?: MeasuredReadiness } | null)?.measured;
 
   return (
@@ -130,121 +124,40 @@ export default async function TestPage({ params, searchParams }: PageProps<"/das
         </Card>
       )}
 
-      <Tabs defaultValue={tab}>
-        <TabsList className="max-w-full overflow-x-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="personas">Personas</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="findings">Findings{findings.length ? ` (${findings.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="readiness">Agent Readiness</TabsTrigger>
-        </TabsList>
-
-        {/* ---------------------------------------------------- Overview */}
-        <TabsContent value="overview" className="mt-4 grid gap-4">
-          <ReportOverview
-            summary={summary}
-            sessions={sessions}
-            personas={personas}
-            findings={findings}
-            active={active}
-            sessionHref={(sid) => `/dashboard/tests/${test.id}/sessions/${sid}`}
-            findingsHref="?tab=findings"
-          />
-        </TabsContent>
-
-        {/* ---------------------------------------------------- Personas */}
-        <TabsContent value="personas" className="mt-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {sessions.map((s) => {
-              const p = personaById.get(s.persona_id);
-              const conf = (p?.configuration ?? {}) as Partial<Persona>;
-              return (
-                <Link key={s.id} href={`/dashboard/tests/${test.id}/sessions/${s.id}`} className="rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-                  <Card size="sm" className="h-full transition-colors hover:bg-accent/50">
-                    <CardContent className="grid gap-3">
-                      <div className="flex items-center gap-3">
-                        <AntAvatar seed={(p?.name ?? "") + (p?.role ?? "")} size={36} state={s.status === "completed" ? "done" : s.status === "failed" ? "failed" : s.status === "running" ? "active" : "idle"} />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium">{p?.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{p?.role}</p>
-                        </div>
-                        <span className="text-muted-foreground">{conf.kind === "ai_agent" ? <BotIcon className="size-4" /> : conf.device === "mobile" ? <SmartphoneIcon className="size-4" /> : <MonitorIcon className="size-4" />}</span>
-                      </div>
-                      <p className="text-sm"><span className="text-muted-foreground">Motivation: </span>{p?.goal}</p>
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                        {s.outcome ? <OutcomeLabel outcome={s.outcome} /> : <StatusLabel status={s.status} />}
-                        <span className="font-mono">{formatDuration(s.duration_ms)} · {s.action_count} actions · {conf.device ?? "desktop"}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </TabsContent>
-
-        {/* ---------------------------------------------------- Sessions */}
-        <TabsContent value="sessions" className="mt-4">
-          <SessionsTab
-            sessionBase={`/dashboard/tests/${test.id}/sessions`}
-            sessions={sessions.map((s) => {
-              const p = personaById.get(s.persona_id);
-              return {
-                id: s.id,
-                personaName: p?.name ?? "Persona",
-                role: p?.role ?? "",
-                status: s.status,
-                outcome: s.outcome,
-                startedAt: s.started_at,
-                error: s.error,
-                summary: s.agent_summary,
-                events: (eventsBySession.get(s.id) ?? []).map((e) => ({
-                  id: e.id, step: e.step, timestamp: e.timestamp, action: e.action, target: e.target, url: e.url,
-                  result: e.result, reasoning: e.reasoning, error: e.error,
-                  screenshotUrl: e.screenshot_path ? urls[e.screenshot_path] ?? null : null,
-                })),
-              };
-            })}
-          />
-        </TabsContent>
-
-        {/* ---------------------------------------------------- Findings */}
-        <TabsContent value="findings" className="mt-4">
-          <FindingsList findings={findings} sessions={sessions} personas={personas} eventsBySession={eventsBySession} urls={urls} active={active} seed={test.id} />
-        </TabsContent>
-
-        {/* ---------------------------------------------------- Readiness */}
-        <TabsContent value="readiness" className="mt-4 grid gap-4">
-          <Alert>
-            <InfoIcon />
-            <AlertDescription>Measured results come directly from crawling your pages. Interpretation is written by AI from those measurements and the recorded sessions.</AlertDescription>
-          </Alert>
+      <ReportBody test={test} personas={personas} sessions={sessions} findings={findings} eventsBySession={eventsBySession} urls={urls} active={active}>
+        <ReportSection id="readiness" title="Agent readiness" description="How easily AI assistants can find and understand this website. Measured from your pages; interpreted by AI.">
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Measured</CardTitle><CardDescription>Objective signals from {measured?.pagesAnalysed ?? 0} pages</CardDescription></CardHeader>
-              <CardContent>{measured ? <MeasuredTable m={measured} /> : <p className="text-sm text-muted-foreground">No measurements available.</p>}</CardContent>
+            <Card className="gap-0 py-0">
+              <div className="border-b border-border px-5 py-4">
+                <p className="font-medium">Measured</p>
+                <p className="text-xs text-muted-foreground">Objective signals from {measured?.pagesAnalysed ?? 0} pages</p>
+              </div>
+              <div className="px-5 py-4">{measured ? <MeasuredTable m={measured} /> : <p className="text-sm text-muted-foreground">No measurements available.</p>}</div>
             </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Interpretation</CardTitle><CardDescription>AI assessment based on measurements and sessions</CardDescription></CardHeader>
-              <CardContent className="grid gap-3">
-                {summary?.readiness?.length ? (
-                  summary.readiness.map((r) => (
-                    <div key={r.area} className="grid gap-1 border-b border-border pb-3 last:border-0 last:pb-0">
-                      <div className="flex items-center justify-between text-sm">
+            <Card className="gap-0 py-0">
+              <div className="border-b border-border px-5 py-4">
+                <p className="font-medium">Interpretation</p>
+                <p className="text-xs text-muted-foreground">AI assessment of the measurements and sessions</p>
+              </div>
+              {summary?.readiness?.length ? (
+                <ul className="divide-y divide-border">
+                  {summary.readiness.map((r) => (
+                    <li key={r.area} className="grid gap-1 px-5 py-3">
+                      <div className="flex items-center justify-between gap-3 text-sm">
                         <span className="font-medium">{READINESS_LABEL[r.area] ?? r.area}</span>
                         <ReadinessStatus status={r.status} />
                       </div>
                       <p className="text-sm text-muted-foreground">{r.interpretation}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">Available when the test completes.</p>
-                )}
-              </CardContent>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-5 py-4 text-sm text-muted-foreground">Available when the test completes.</p>
+              )}
             </Card>
           </div>
-        </TabsContent>
-      </Tabs>
+        </ReportSection>
+      </ReportBody>
     </div>
   );
 }

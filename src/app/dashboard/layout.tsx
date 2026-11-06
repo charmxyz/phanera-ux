@@ -33,7 +33,7 @@ function PageSkeleton() {
 
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
   return (
-    <SidebarProvider>
+    <SidebarProvider data-surface="white">
       <Suspense fallback={<SidebarSkeleton />}>
         <SidebarWithData />
       </Suspense>

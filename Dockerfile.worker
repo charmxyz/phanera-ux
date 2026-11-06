@@ -13,9 +13,13 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY scripts/worker.ts ./scripts/worker.ts
 
+# Sized for a Railway Hobby service with ~4 vCPU / 8 GB: 3 personas in parallel per test
+# (one Chromium per test, ~0.5 GB per persona) and up to 2 tests at once.
+# Service variables in Railway override these.
 ENV NODE_ENV=production \
     BROWSER_PROVIDER=local \
-    PERSONA_CONCURRENCY=1
+    PERSONA_CONCURRENCY=3 \
+    WORKER_MAX_TESTS=2
 
 # Run as the image's unprivileged user (Chromium sandbox works without root).
 RUN chown -R pwuser:pwuser /app

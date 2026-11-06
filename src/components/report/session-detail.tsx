@@ -1,4 +1,4 @@
-import { TargetIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SessionReplay } from "@/components/sessions/session-replay";
 import { JourneyGraph } from "@/components/sessions/journey-graph";
@@ -29,81 +29,103 @@ export function SessionDetail({
   const active = session.status === "queued" || session.status === "running";
   const pagesVisited = new Set(events.map((e) => e.url).filter((u): u is string => !!u && !u.startsWith("chrome-error")).map(pageKey)).size;
 
+  // Reports before short summaries existed fall back to their (long) rationale, clamped.
+  const headline = evaluation?.summary ?? null;
+  const points = evaluation?.key_points ?? [];
+  const siteIssues = (evaluation?.observations ?? []).filter((o) => o.is_website_issue);
+  const runNotes = (evaluation?.observations ?? []).filter((o) => !o.is_website_issue);
+
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        {/* Result: the verdict first, then why, then the agent's own words. */}
+        {/* Result: the verdict in one line, the facts behind it, everything else on demand. */}
         <Card className="gap-0 py-0">
-          <div className="grid gap-3 px-5 py-5">
-            <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Final result</span>
+          <div className="grid gap-4 px-5 py-5">
             {session.outcome ? (
               <OutcomeLabel outcome={session.outcome} className="text-xl font-semibold tracking-tight [&_svg]:size-5" />
             ) : (
               <StatusLabel status={session.status} className="text-xl font-semibold tracking-tight [&_svg]:size-5" />
             )}
-            {evaluation ? (
-              <p className="max-w-prose leading-relaxed text-pretty">{evaluation.rationale}</p>
+            {headline ? (
+              <p className="text-lg leading-snug font-medium text-pretty">{headline}</p>
+            ) : evaluation ? (
+              <p className="line-clamp-3 leading-relaxed text-muted-foreground">{evaluation.rationale}</p>
             ) : (
-              <p className="text-muted-foreground">{active ? "In progress." : "Not evaluated."}</p>
+              <p className="text-muted-foreground">{active ? session.current_activity ?? "In progress." : "Not evaluated."}</p>
             )}
-            {session.error && <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{session.error}</p>}
+            {points.length > 0 && (
+              <ul className="grid gap-2">
+                {points.map((p, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm leading-snug">
+                    <CheckIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />{p}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {session.error && <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{session.error}</p>}
           </div>
           <dl className="grid grid-cols-2 border-t border-border sm:grid-cols-4">
             <Stat label="Duration" value={formatDuration(session.duration_ms)} />
             <Stat label="Actions" value={String(session.action_count)} />
             <Stat label="Pages visited" value={String(pagesVisited)} />
-            <Stat label="Issues noted" value={String(evaluation?.observations?.length ?? 0)} />
+            <Stat label="Site issues" value={String(siteIssues.length)} />
           </dl>
-          {session.agent_summary && <AgentReport text={session.agent_summary} className="border-t border-border px-5 py-4" />}
+          {evaluation?.rationale && evaluation.rationale !== headline && (
+            <More label="Why this verdict"><p className="leading-relaxed text-muted-foreground">{evaluation.rationale}</p></More>
+          )}
+          {session.agent_summary && (
+            <More label="Agent's own notes"><AgentReport text={session.agent_summary} heading={false} preview={100} /></More>
+          )}
         </Card>
 
         <Card className="gap-0 py-0">
-          <div className="grid gap-2 px-5 py-5">
-            <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase"><TargetIcon className="size-3.5" />Test goal</span>
-            <p className="leading-relaxed text-pretty">{test?.goal}</p>
-            <p className="text-xs text-muted-foreground">Shared by every persona in this test.</p>
-            {session.current_activity && active && <p className="text-primary">{session.current_activity}</p>}
-          </div>
-          <dl className="grid gap-3 border-t border-border px-5 py-4">
-            <PersonaFact label="Motivation" value={persona?.goal} />
-            <PersonaFact label="How they browse" value={conf.behaviour} />
-            <PersonaFact label="Trusts the answer when" value={conf.success_criteria} />
-          </dl>
-          <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-1.5 border-b border-border px-5 py-3 text-xs text-muted-foreground">
             <span className="rounded-md border border-border px-2 py-0.5">{conf.kind === "ai_agent" ? "AI agent" : "Human persona"}</span>
             <span className="rounded-md border border-border px-2 py-0.5 capitalize">{conf.device ?? "desktop"}</span>
             {conf.patience && <span className="rounded-md border border-border px-2 py-0.5 capitalize">{conf.patience} patience</span>}
           </div>
+          <dl className="grid gap-4 px-5 py-5">
+            <PersonaFact label="Motivation" value={persona?.goal} />
+            <PersonaFact label="How they browse" value={conf.behaviour} />
+            <PersonaFact label="Trusts the answer when" value={conf.success_criteria} />
+          </dl>
         </Card>
       </div>
-      {evaluation?.observations?.length ? (
+
+      {(siteIssues.length > 0 || runNotes.length > 0) && (
         <Card className="gap-0 py-0">
-          <div className="border-b border-border px-5 py-4">
-            <p className="font-medium">Observed issues</p>
-            <p className="text-xs text-muted-foreground">What the evaluator noticed in this session&apos;s steps and screenshots</p>
+          <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+            <p className="font-medium">Issues in this session</p>
+            <span className="text-xs text-muted-foreground">{siteIssues.length} on the website</span>
           </div>
-          <ul className="divide-y divide-border">
-            {evaluation.observations.map((o, i) => (
-              <li key={i} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-3 px-5 py-3">
-                <span className="pt-0.5 font-mono text-xs text-muted-foreground">{o.step != null ? `step ${o.step}` : "general"}</span>
-                <div className="grid gap-1.5">
-                  <p className="leading-snug">{o.issue}</p>
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    <span className={o.is_website_issue ? "rounded-md bg-warning/10 px-1.5 py-0.5 text-warning" : "rounded-md border border-border px-1.5 py-0.5 text-muted-foreground"}>
-                      {o.is_website_issue ? "Website issue" : "Agent / environment"}
-                    </span>
-                    {o.directly_observed && <span className="rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">Seen in screenshot</span>}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {siteIssues.length > 0 ? (
+            <ul className="divide-y divide-border">
+              {siteIssues.map((o, i) => (
+                <li key={i} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-3 px-5 py-3">
+                  <span className="pt-0.5 font-mono text-xs text-muted-foreground">{o.step != null ? `step ${o.step}` : "general"}</span>
+                  <p className="text-sm leading-snug">
+                    {o.issue}
+                    {o.directly_observed && <span className="ml-2 rounded-md border border-border px-1.5 py-0.5 text-xs text-muted-foreground">Seen in screenshot</span>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-5 py-3 text-sm text-muted-foreground">No website problems in this session.</p>
+          )}
+          {runNotes.length > 0 && (
+            <More label={`${runNotes.length} note${runNotes.length === 1 ? "" : "s"} about the test run (not the website)`}>
+              <ul className="grid gap-2 text-sm text-muted-foreground">
+                {runNotes.map((o, i) => <li key={i}><span className="font-mono text-xs">{o.step != null ? `step ${o.step} · ` : ""}</span>{o.issue}</li>)}
+              </ul>
+            </More>
+          )}
         </Card>
-      ) : null}
+      )}
       <Card size="sm">
         <CardHeader>
           <CardTitle className="text-sm">User journey</CardTitle>
-          <p className="text-xs text-muted-foreground">Each box is a page the agent visited, with what it observed, what it was thinking, and any issues. Click a page for full detail.</p>
+          <p className="text-xs text-muted-foreground">Pages visited, in order. Click a page for detail.</p>
         </CardHeader>
         <CardContent>
           <JourneyGraph
@@ -149,5 +171,18 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="font-mono text-base tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+/** Collapsed-by-default extra detail inside a card. */
+function More({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group border-t border-border">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-sm text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+        {label}
+        <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-5 pb-4">{children}</div>
+    </details>
   );
 }

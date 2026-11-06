@@ -98,6 +98,30 @@ body:has([data-surface="white"]) {
   --sidebar-border: #ececee;
 }
 
+/* Isometric line-art scenes: flowing dashed links, badges popping in turn. */
+@keyframes iso-dash {
+  to { stroke-dashoffset: -24; }
+}
+.iso-flow { animation: iso-dash 1.4s linear infinite; }
+/* One shared 11s cycle: badges appear in turn (step 0…3), then all reset together. */
+@keyframes iso-pop-0 { 0%, 4% { opacity: 0; transform: translateY(6px); } 9%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes iso-pop-1 { 0%, 17% { opacity: 0; transform: translateY(6px); } 22%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes iso-pop-2 { 0%, 30% { opacity: 0; transform: translateY(6px); } 35%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+@keyframes iso-pop-3 { 0%, 46% { opacity: 0; transform: translateY(6px); } 51%, 90% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+.iso-pop {
+  opacity: 0;
+  /* Longhands: the name is set per badge inline (iso-pop-0…3). */
+  animation-duration: 11s;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .iso-flow, .iso-pop { animation: none; opacity: 1; }
+  .iso-ants { display: none; }
+}
+
 /* Soft studio glow behind the voxel scenes. It always falls off to the page
    background, so sections meet without visible edges. */
 .bg-studio {

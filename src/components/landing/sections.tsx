@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckIcon, FileSearchIcon, GlobeIcon, NetworkIcon, ScanTextIcon, CodeXmlIcon } from "lucide-react";
+import { CheckIcon, FileSearchIcon, GlobeIcon, MonitorIcon, NetworkIcon, ScanTextIcon, SmartphoneIcon, CodeXmlIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -7,7 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { buttonVariants } from "@/components/ui/button";
 import { AntAvatar } from "@/components/ants/pixel-ant";
 import { AntMarch } from "./ants/ant-march";
-import { ColonyFlow } from "./flow/colony-flow";
+import { EnvironmentIso, HowItWorksIso } from "./iso/scenes";
 import { HeroFlower } from "./flower/hero-flower";
 import { ExploreForm } from "./explore-form";
 import { cn } from "@/lib/utils";
@@ -56,17 +56,19 @@ export function Hero() {
 const STEPS = [
   { n: "1", t: "Ask a question", d: "“Can a new visitor find pricing?” Paste your URL and pick the question." },
   { n: "2", t: "Visitors try it", d: "Each persona browses your live site in a real browser, its own way." },
-  { n: "3", t: "Get a fix list", d: "Ranked issues, each with screenshots and a suggested fix." },
+  { n: "3", t: "See what to fix", d: "Issues ranked by urgency, each with screenshots and a suggested fix." },
 ];
 
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="scroll-mt-16 py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="How it works" title="From URL to fix list in minutes.">
+        <SectionHeading eyebrow="How it works" title="Paste a link. Get answers in minutes.">
           No recruiting, no scheduling, no waiting on a research report.
         </SectionHeading>
-        <ColonyFlow className="mx-auto aspect-[16/8] w-full max-w-5xl max-sm:aspect-[4/3]" />
+        <div className="-mx-4 overflow-hidden sm:mx-0">
+          <HowItWorksIso className="mx-auto block w-[150%] max-w-none -translate-x-[16%] sm:w-full sm:max-w-5xl sm:translate-x-0" />
+        </div>
         <ol className="mx-auto mt-6 grid max-w-5xl gap-6 sm:grid-cols-3">
           {STEPS.map((step) => (
             <li key={step.n} className="grid gap-1.5">
@@ -76,6 +78,42 @@ export function HowItWorks() {
             </li>
           ))}
         </ol>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------- Environments */
+const ENVS = [
+  { kind: "desktop" as const, pills: [["Real browser", GlobeIcon], ["Desktop", MonitorIcon], ["1366 × 860", null]] as const },
+  { kind: "mobile" as const, pills: [["Real browser", GlobeIcon], ["Phone", SmartphoneIcon], ["390 × 844 · touch", null]] as const },
+];
+
+export function Environments() {
+  return (
+    <section className="py-24">
+      <div className="container-marketing">
+        <SectionHeading eyebrow="Environments" title="Tested the way visitors browse.">
+          Every persona gets a fresh, isolated browser on a desktop or phone-sized screen, and uses your live site with real clicks, scrolls and typing.
+        </SectionHeading>
+        <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2">
+          {ENVS.map((env) => (
+            <div key={env.kind} className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 border-b border-border px-4 py-3 text-sm">
+                {env.pills.map(([label, Icon], i) => (
+                  <span key={label} className="flex items-center gap-1.5">
+                    {i === 1 && <span className="px-0.5 text-muted-foreground">on</span>}
+                    <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1">
+                      {Icon && <Icon className="size-3.5" />}
+                      {label}
+                    </span>
+                  </span>
+                ))}
+              </div>
+              <EnvironmentIso kind={env.kind} className="block w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -203,7 +241,7 @@ export function Findings() {
   return (
     <section className="py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="Findings" title="A fix list, not a pile of recordings.">
+        <SectionHeading eyebrow="Findings" title="Clear fixes, not hours of recordings.">
           Every issue is ranked by urgency, backed by screenshots, and comes with a suggested fix.
         </SectionHeading>
         <div className="mx-auto grid max-w-5xl gap-3 md:grid-cols-3">
@@ -313,7 +351,7 @@ export function Pricing({ heading = true }: { heading?: boolean }) {
 
 /* -------------------------------------------------------------------- FAQ */
 const FAQS = [
-  ["What is Phanera?", "A quick way to see your website the way visitors do. Simulated visitors try a task on your live site in real browsers, and Phanera turns what happened into a ranked fix list."],
+  ["What is Phanera?", "A quick way to see your website the way visitors do. Simulated visitors try a task on your live site in real browsers, and Phanera shows you what got in their way and how to fix it."],
   ["How does it work?", "Paste your URL and pick a question, like \u201ccan a new visitor find pricing?\u201d. Phanera reads your site, suggests personas, and sends each one through it. A separate reviewer checks every visit before writing the findings."],
   ["Are the personas real people?", "No. They're simulated visitors with different reasons and habits. They're great for catching friction early, but they don't replace talking to customers."],
   ["Does it check AI assistants too?", "Yes. Every test includes an AI assistant persona, plus a report on whether assistants can find, read and use your pages."],

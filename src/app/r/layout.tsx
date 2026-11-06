@@ -12,7 +12,8 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function SharedReportLayout({ children }: LayoutProps<"/r">) {
   return (
-    <>
+    // Shared reports use a plain white page (the dashboard keeps its grey studio theme).
+    <div className="flex flex-1 flex-col bg-background [--background:#ffffff]">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="container-marketing flex h-14 items-center justify-between">
           <Logo />
@@ -25,7 +26,7 @@ export default function SharedReportLayout({ children }: LayoutProps<"/r">) {
       </main>
       <ShareCTA />
       <SiteFooter />
-    </>
+    </div>
   );
 }
 

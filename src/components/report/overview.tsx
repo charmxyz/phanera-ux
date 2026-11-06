@@ -128,7 +128,7 @@ export function ReportOverview({
 
 type Counts = Summary["counts"];
 
-function Verdict({ counts, total }: { counts: Counts; total: number }) {
+export function Verdict({ counts, total }: { counts: Counts; total: number }) {
   const [text, tone, Icon] =
     total > 0 && counts.success === total
       ? ["Every persona reached the goal", "text-success", CheckCircle2Icon]

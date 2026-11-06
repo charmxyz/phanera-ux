@@ -38,8 +38,9 @@ export function SessionSwitcher({ items, panels }: { items: Item[]; panels: Reac
 
   const current = items[idx];
   return (
-    <div ref={ref} className="grid scroll-mt-32 gap-4">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Personas">
+    // One framed panel: persona tabs sit on its top edge, the chosen session fills it.
+    <div ref={ref} className="scroll-mt-24 overflow-hidden rounded-2xl border border-border">
+      <div className="flex overflow-x-auto border-b border-border bg-background" role="tablist" aria-label="Personas">
         {items.map((it, i) => (
           <button
             key={it.id}
@@ -47,21 +48,22 @@ export function SessionSwitcher({ items, panels }: { items: Item[]; panels: Reac
             aria-selected={i === idx}
             onClick={() => setIdx(i)}
             className={cn(
-              "flex items-center gap-2.5 rounded-xl border py-2 pr-4 pl-2 text-left text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              i === idx ? "border-foreground/40 bg-card shadow-xs" : "border-border bg-card/60 hover:bg-card",
+              "relative flex shrink-0 items-center gap-2.5 px-4 py-3 text-left text-sm transition-colors outline-none focus-visible:bg-muted",
+              i === idx ? "text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
           >
-            <AntAvatar seed={it.name + it.role} size={26} state={it.status === "failed" ? "failed" : "done"} />
+            <AntAvatar seed={it.name + it.role} size={24} state={it.status === "failed" ? "failed" : "done"} />
             <span className="grid">
               <span className="font-medium">{it.name}</span>
               {it.outcome ? <OutcomeLabel outcome={it.outcome} className="text-xs" /> : <StatusLabel status={it.status} className="text-xs" />}
             </span>
+            {i === idx && <span aria-hidden className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-foreground" />}
           </button>
         ))}
       </div>
       {current && (
-        <div role="tabpanel" aria-label={`${current.name}, ${current.role}`} className="grid gap-4">
-          <div className="flex items-baseline gap-2">
+        <div role="tabpanel" aria-label={`${current.name}, ${current.role}`} className="grid gap-4 bg-[#f6f6f7] p-4 sm:p-6">
+          <div className="flex flex-wrap items-baseline gap-x-2">
             <h3 className="text-xl font-medium tracking-tight">{current.name}</h3>
             <span className="text-muted-foreground">{current.role}</span>
           </div>

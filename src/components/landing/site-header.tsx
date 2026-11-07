@@ -11,6 +11,7 @@ const NAV = [
   { href: "/#product", label: "Product" },
   { href: "/#how-it-works", label: "How It Works" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
 ];
 
 function GuestLinks() {

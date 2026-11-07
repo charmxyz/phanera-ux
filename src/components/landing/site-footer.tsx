@@ -14,6 +14,7 @@ export function SiteFooter() {
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground" aria-label="Footer">
           <Link href="/#product" className="hover:text-foreground">Product</Link>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
+          <Link href="/blog" className="hover:text-foreground">Blog</Link>
           <Link href="/login" className="hover:text-foreground">Login</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link href="/terms" className="hover:text-foreground">Terms</Link>

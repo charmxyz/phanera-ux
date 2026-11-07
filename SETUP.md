@@ -1,6 +1,6 @@
 # Phanera — local setup
 
-The technical reference is in [README.md](README.md). This file covers setting up the services.
+Project overview: [README.md](README.md). Technical reference: [docs/TECHNICAL.md](docs/TECHNICAL.md). This file covers setting up the services.
 
 ## 1. Install
 

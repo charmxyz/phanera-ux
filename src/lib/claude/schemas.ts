@@ -29,16 +29,18 @@ export type WebsiteAnalysis = z.infer<typeof WebsiteAnalysisSchema>;
 // ---- Personas ---------------------------------------------------------------
 export const PersonaSchema = z.object({
   name: z.string().describe("A first name only, e.g. Alex"),
-  role: z.string().describe("Short label, e.g. First-time visitor"),
+  role: z.string().describe("Short label for who they are in this website's real audience, e.g. 'First-time buyer' (max 6 words)"),
   kind: z.enum(["human", "ai_agent"]),
-  context: z.string(),
-  // Stored as `goal` for compatibility, but this is the persona's motivation: every persona
-  // in a test attempts the same test goal; who they are only changes *how* they go about it.
-  goal: z.string().describe("Motivation: why this person is on the site and what they personally care about (1 sentence). Not a separate task."),
+  context: z.string().describe("Their situation: circumstances, experience and constraints (1-2 sentences). Not a task."),
+  // Stored as `goal` for compatibility, but this is the persona's motivation: the underlying
+  // driver (need, value, concern, incentive). Every persona attempts the same test goal.
+  goal: z
+    .string()
+    .describe("Motivation: the underlying need, value, concern or incentive driving their decisions; WHY they care, not WHAT they do (1 concise sentence). Never a task, a question to answer, or information to find."),
   device: z.enum(["desktop", "mobile"]),
-  behaviour: z.string().describe("How they browse: familiarity, reading style, what they click first"),
+  behaviour: z.string().describe("How their motivation shows up while browsing: familiarity, reading style, where attention goes first, decision style, reaction to friction (1-2 sentences)"),
   patience: z.enum(["low", "medium", "high"]),
-  success_criteria: z.string().describe("What this persona would need to see to trust the answer, given their motivation (1 sentence)"),
+  success_criteria: z.string().describe("What would make this person feel confident in the outcome, given their motivation, phrased generally rather than as a specific fact to find (1 sentence)"),
 });
 export type Persona = z.infer<typeof PersonaSchema>;
 

@@ -7,10 +7,10 @@ export const TASK = "Can a potential customer find the pricing page and understa
 const T0 = Date.parse("2026-11-06T10:00:00Z");
 
 export const PERSONAS: Persona[] = [
-  { name: "Priya", role: "Head of Operations", kind: "human", context: "Evaluating tools for a 40-person team.", goal: "Needs a clear price and plan comparison to take to her CEO.", device: "desktop", behaviour: "Skims headings, then reads pricing tables closely.", patience: "medium", success_criteria: "A plan and price she can quote without guessing." },
-  { name: "Tom", role: "Startup founder", kind: "human", context: "Busy, comparing three analytics tools this week.", goal: "Wants to start a free trial in under a minute.", device: "desktop", behaviour: "Clicks the first obvious button, ignores long copy.", patience: "low", success_criteria: "A trial started without talking to sales." },
-  { name: "Atlas", role: "AI research assistant", kind: "ai_agent", context: "Answering a user's question about Acme.", goal: "Returning an accurate, sourced summary of plans and prices.", device: "desktop", behaviour: "Reads page structure and text, not visuals.", patience: "high", success_criteria: "Every plan and price attributed to a page." },
-  { name: "Maya", role: "Data analyst", kind: "human", context: "Checking whether Acme fits their data stack.", goal: "Needs integration and export details before recommending it.", device: "desktop", behaviour: "Goes straight to docs and FAQs.", patience: "high", success_criteria: "Clear answers on integrations and limits." },
+  { name: "Priya", role: "Head of Operations", kind: "human", context: "Evaluating tools for a 40-person team.", goal: "Making a decision she can defend to her CEO.", device: "desktop", behaviour: "Skims headings, then reads pricing tables closely.", patience: "medium", success_criteria: "A plan and price she can quote without guessing." },
+  { name: "Tom", role: "Startup founder", kind: "human", context: "Busy, comparing three analytics tools this week.", goal: "Moving fast and keeping momentum this week.", device: "desktop", behaviour: "Clicks the first obvious button, ignores long copy.", patience: "low", success_criteria: "A trial started without talking to sales." },
+  { name: "Atlas", role: "AI research assistant", kind: "ai_agent", context: "Answering a user's question about Acme.", goal: "Giving its user an answer they can rely on.", device: "desktop", behaviour: "Reads page structure and text, not visuals.", patience: "high", success_criteria: "Every plan and price attributed to a page." },
+  { name: "Maya", role: "Data analyst", kind: "human", context: "Checking whether Acme fits their data stack.", goal: "Protecting a data stack that already works.", device: "desktop", behaviour: "Goes straight to docs and FAQs.", patience: "high", success_criteria: "Clear answers on integrations and limits." },
 ];
 
 export const PERSONA_ROWS = PERSONAS.slice(0, 3).map((p, i) => ({

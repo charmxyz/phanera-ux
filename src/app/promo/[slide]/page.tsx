@@ -22,7 +22,7 @@ export default async function PromoSlide({ params }: { params: Promise<{ slide: 
       );
     case 2:
       return (
-        <Slide n={2} title="Generate AI personas with different goals, motivations and behaviours." url="phanera.com/dashboard/new">
+        <Slide n={2} title="Generate AI personas with different motivations and behaviours." url="phanera.com/dashboard/new">
           <SidebarProvider className="min-h-0">
             <DashboardShell active="New usability test">
               <div className="-mt-[470px]">

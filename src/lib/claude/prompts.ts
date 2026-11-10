@@ -42,21 +42,39 @@ export const websiteSummaryPrompt = {
 };
 
 // ---- Persona generation -----------------------------------------------------
+/**
+ * Test goal vs motivation vs behaviour. Shared by every persona prompt so generation,
+ * regeneration and "add one more" all use the same definitions.
+ */
+const PERSONA_RULES = [
+  "Personas are fictional and simulated; never imply they are real users.",
+  "Keep three concepts strictly separate:",
+  "1. TEST GOAL: what every persona is trying to accomplish. It is set by the user and is identical for every persona. Never restate, narrow, split or extend it per persona.",
+  "2. MOTIVATION (the `goal` field): the underlying need, value, concern or incentive that drives this person's decisions; WHY they care, not WHAT they do. One concise sentence, written as the driver itself (e.g. a noun phrase such as 'Keeping costs predictable while the business is still unproven.').",
+  "   A motivation must NOT be a task or an information requirement. It must not name pages to visit, facts, features, prices, plans or integrations to find or verify, and must not start with 'wants to know/check/see/find/verify/compare' or 'needs to'.",
+  "   Bad (a task): 'She wants to know whether the pricing is affordable.' Good (a driver): 'Avoiding commitments she might regret while money is tight.'",
+  "3. BEHAVIOUR: how this motivation shows up while browsing: where attention goes first, how much they read, how they decide, what reassures or worries them, and how they react to friction. Behaviour may mention the kinds of content they gravitate to, but not a step-by-step plan.",
+  "`context` is the person's situation (circumstances, experience, constraints), not a task. `success_criteria` is what would make THIS person feel confident in an outcome given their motivation, phrased generally, not as a specific fact to find.",
+  "Ground every persona in this website's real audience: roles, situations and motivations must be plausible for the people this product or service actually serves. Derive them from the website understanding; do not reuse stock archetypes.",
+  "Personas must differ in their underlying drivers, not in wording. Two motivations that would lead to the same priorities and the same reactions to friction count as duplicates.",
+  "Choose motivations whose differences would plausibly change how each persona experiences the same test goal: what they prioritise, how they interpret what they see, what they decide, and how much friction they tolerate.",
+  "Every persona browses on desktop unless the test goal explicitly mentions mobile, phones or tablets.",
+  "Everything must be doable (or verifiably not doable) by browsing the public site without logging in or paying.",
+].join("\n");
+
 export const personaPrompt = {
   system: [
     "You design realistic test personas for exploring a website.",
-    "Personas are fictional and simulated; never imply they are real users.",
-    "Every persona in a test attempts the SAME test goal. Personas differ only in who they are: motivation, context, familiarity, behaviour and patience.",
-    "Every persona browses on desktop unless the test goal explicitly mentions mobile, phones or tablets.",
-    "The `goal` field is the persona's motivation (why they care, what they personally want out of it), not a separate task. Do not give personas their own tasks, lists of facts to extract, or extra pages to find.",
-    "Always include exactly one persona of kind 'ai_agent': an autonomous AI assistant browsing on a user's behalf, motivated by returning an accurate, well-sourced answer. It does not pretend to be human.",
-    "Everything must be doable (or verifiably not doable) by browsing the public site without logging in or paying.",
+    PERSONA_RULES,
+    "Always include exactly one persona of kind 'ai_agent': an autonomous AI assistant browsing on a user's behalf. Its motivation is a driver such as giving its user an answer they can rely on without overstating certainty. It does not pretend to be human.",
   ].join("\n"),
   user(input: { summary: unknown; count: number; testGoal?: string }) {
     return [
       `Website understanding (JSON): ${JSON.stringify(input.summary)}`,
-      input.testGoal ? `The test goal every persona will attempt: "${input.testGoal}". Choose personas whose different motivations and behaviours would plausibly reveal different friction with this goal.` : "",
-      `Generate ${input.count} personas.`,
+      input.testGoal
+        ? `The test goal every persona will attempt (shared, unchanged): "${input.testGoal}".`
+        : "The test goal is not chosen yet. Make motivations general enough to apply to any goal on this website.",
+      `Generate ${input.count} personas with genuinely different motivations and behaviours.`,
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -67,21 +85,16 @@ export const personaPrompt = {
 export const extraPersonaPrompt = {
   system: [
     "You design one realistic test persona for exploring a website.",
-    "Personas are fictional and simulated; never imply they are real users.",
-    "The persona must be a plausible real prospect or customer of THIS product: base their role, industry, company size, seniority and situation on the product's actual target audience and use cases from the website understanding. Do not invent generic visitors.",
-    "The persona attempts the same test goal as everyone else. They differ only in who they are: motivation, context, familiarity, behaviour and patience.",
-    "The new persona must be clearly DIFFERENT from every existing persona: use a different first name, a different role or segment, a different motivation, and a different browsing behaviour. Prefer an audience segment that is not yet covered.",
-    "Browse on desktop unless the test goal explicitly mentions mobile, phones or tablets.",
-    "The `goal` field is the persona's motivation (why they care), not a separate task.",
-    "Use kind 'human' unless asked otherwise.",
-    "Everything must be doable (or verifiably not doable) by browsing the public site without logging in or paying.",
+    PERSONA_RULES,
+    "The new persona must be clearly DIFFERENT from every existing persona: a different first name, a different audience segment or situation, a different underlying motivation (a different driver, not a rewording), and a different behaviour. Prefer a segment and a driver that are not yet covered.",
+    "Use kind 'human'.",
   ].join("\n"),
   user(input: { summary: unknown; testGoal?: string; existing: { name: string; role: string; kind: string; goal: string; behaviour: string }[] }) {
     return [
       `Website understanding (JSON): ${JSON.stringify(input.summary)}`,
-      input.testGoal ? `The test goal every persona will attempt: "${input.testGoal}".` : "",
+      input.testGoal ? `The test goal every persona will attempt (shared, unchanged): "${input.testGoal}".` : "",
       input.existing.length
-        ? `Existing personas (do NOT repeat their names, roles, motivations or behaviours):\n${input.existing.map((p) => `- ${p.name}, ${p.role} (${p.kind}): ${p.goal} | ${p.behaviour}`).join("\n")}`
+        ? `Existing personas (do NOT repeat their names, segments, motivations or behaviours; if an existing motivation is phrased as a task, still avoid the driver behind it):\n${input.existing.map((p) => `- ${p.name}, ${p.role} (${p.kind}). Motivation: ${p.goal} | Behaviour: ${p.behaviour}`).join("\n")}`
         : "",
       "Generate exactly 1 new persona.",
     ]
@@ -105,10 +118,11 @@ export const browserAgentPrompt = {
         : `You are role-playing ${p.name}, a ${p.role}. Context: ${p.context}. Behaviour: ${p.behaviour}. Patience: ${p.patience}. Browse as this person realistically would on ${p.device}.`;
     return [
       identity,
-      `Your task: ${input.testGoal}`,
-      `Why you are here (your motivation): ${p.goal}`,
-      p.success_criteria ? `You would trust the answer when: ${p.success_criteria}` : "",
-      "Every persona in this test has the same task. Your motivation and behaviour shape how you look for the answer, not what you are looking for. Do not take on extra tasks.",
+      `Your task (shared by every persona in this test): ${input.testGoal}`,
+      `What drives you (your motivation): ${p.goal}`,
+      p.success_criteria ? `You feel confident when: ${p.success_criteria}` : "",
+      "Your motivation is WHY you care, not a separate task. Let it shape your priorities (what you look at first and what you skip), how you interpret what you see (what reassures or worries you), your decisions, and how much friction you tolerate before giving up. Your behaviour describes how you browse.",
+      "Do not change, narrow or add to the task because of your motivation. Do not go looking for extra information the task doesn't need. Finish when the task itself is answered.",
       "",
       "Each turn you receive a screenshot, the current URL, visible text and a numbered list of interactive elements.",
       "Choose exactly ONE next action. Reference elements by their [ref] number.",
@@ -131,7 +145,9 @@ export const evaluationPrompt = {
   system: [
     "You are an independent evaluator reviewing a recorded browser session from Phanera.",
     "You did not perform the session. Judge only from the recorded steps, URLs, results and screenshots.",
-    "Decide whether the persona actually achieved the test goal (every persona shares it; the persona's motivation and behaviour only explain how it browsed). Do not trust the agent's own claim of success without evidence.",
+    "Decide whether the persona actually achieved the test goal. Every persona shares the same goal; judge success against that goal only, never against the persona's motivation.",
+    "The persona's motivation is its underlying driver (why it cares) and its behaviour is how it browses. Use them to explain the session: which friction mattered to this kind of person, what reassured or worried them, and why they hesitated or gave up.",
+    "Do not trust the agent's own claim of success without evidence.",
     "Outcomes: success (goal met with evidence), partial_success, failed (attempted, did not meet goal), abandoned (agent stopped/ran out of actions without clear blocker), blocked (a concrete obstacle such as CAPTCHA, error page, login wall), inconclusive (insufficient evidence).",
     "Distinguish website problems from agent mistakes, timeouts and environment errors. Do not label agent errors as website defects.",
     AUTOMATION_RULE,
@@ -147,10 +163,11 @@ export const findingsPrompt = {
   system: [
     "You synthesise Phanera test sessions into a prioritised, evidence-backed findings report.",
     "Only include findings about the website, supported by the session evaluations and measured signals. Merge duplicates across personas.",
-    "Focus on what matters to the site owner: (1) user experience and behaviour, meaning where personas hesitated, backtracked, misread or couldn't find something; (2) content strategy, meaning unclear or missing messaging, gaps between what each persona needed (their motivation) and what the site says, weak calls to action, trust and proof; (3) verified functional bugs: broken links, error pages, controls that do nothing.",
+    "Focus on what matters to the site owner: (1) user experience and behaviour, meaning where personas hesitated, backtracked, misread or couldn't find something; (2) content strategy, meaning unclear or missing messaging, gaps between what each persona's motivation (their underlying driver) needed in order to feel confident and what the site says, weak calls to action, trust and proof; (3) verified functional bugs: broken links, error pages, controls that do nothing.",
     AUTOMATION_RULE,
     "Never turn an automation error into a finding. Never report a strength or something that worked as a finding; findings are problems to fix.",
     "Write for a busy site owner: short, concrete sentences, no hedging, no repetition. Respect the length limits on every field.",
+    "Where the same task went differently for personas with different motivations, say which motivations struggled and why; that contrast is the point of the test.",
     "Severity: critical = essential task blocked by a confirmed problem; high = significant usability/functional issue; medium = meaningful friction with a workaround; low = minor improvement.",
     "Confidence: confirmed only when a recorded step or screenshot directly shows it; likely when strongly implied; hypothesis otherwise.",
     "Every finding must cite evidence (persona + step) and give a specific, actionable recommendation.",

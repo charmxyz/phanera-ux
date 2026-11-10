@@ -84,10 +84,10 @@ export function HowItWorks() {
 
 /* ------------------------------------------------------------- Personas */
 const EXAMPLE_PERSONAS = [
-  { name: "Alex", role: "First-time visitor", goal: "Heard about you once. Wants to know what you do, fast.", behaviour: "Skims headings", trait: "Impatient" },
-  { name: "Sam", role: "Budget owner", goal: "Needs a price to take to the boss.", behaviour: "Reads the fine print", trait: "Skeptical" },
-  { name: "Taylor", role: "Technical evaluator", goal: "Checking it works with their stack.", behaviour: "Goes straight to docs", trait: "Thorough" },
-  { name: "Morgan", role: "AI assistant", goal: "Answering a user's question about you.", behaviour: "Reads structure, not visuals", trait: "Literal" },
+  { name: "Alex", role: "First-time visitor", goal: "Saving time and avoiding anything that feels complicated.", behaviour: "Skims headings", trait: "Impatient" },
+  { name: "Sam", role: "Budget owner", goal: "Not being blamed for a costly decision.", behaviour: "Reads the fine print", trait: "Skeptical" },
+  { name: "Taylor", role: "Technical evaluator", goal: "Keeping their existing setup stable and under control.", behaviour: "Goes straight to docs", trait: "Thorough" },
+  { name: "Morgan", role: "AI assistant", goal: "Giving its user an answer they can rely on.", behaviour: "Reads structure, not visuals", trait: "Literal" },
 ];
 
 export function Personas() {
@@ -95,7 +95,7 @@ export function Personas() {
     <section id="product" className="scroll-mt-16 py-24">
       <div className="container-marketing">
         <SectionHeading eyebrow="AI personas" icon={UsersIcon} title="Different users. Different perspectives.">
-          Generate AI personas with different goals, motivations and behaviours to explore your website.
+          Generate AI personas with different motivations and behaviours, and watch them attempt the same task on your website.
         </SectionHeading>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {EXAMPLE_PERSONAS.map((p) => (
@@ -316,7 +316,7 @@ export function Pricing({ heading = true }: { heading?: boolean }) {
 const FAQS = [
   ["What is Phanera?", "An AI user research platform. AI personas attempt real tasks on your website in real browsers, and Phanera turns their sessions into research insights: task outcomes, session replays and prioritised usability findings."],
   ["How does it work?", "Add your URL and a user task, like \u201ccan a new visitor find pricing?\u201d. Phanera analyses your website, suggests AI personas and sends each one through the task. An independent review of every session produces the research insights."],
-  ["Are the personas real people?", "No. AI personas are simulated users with distinct goals and behaviours. They surface usability issues early and cheaply, and complement rather than replace research with real customers."],
+  ["Are the personas real people?", "No. AI personas are simulated users with distinct motivations and behaviours. They surface usability issues early and cheaply, and complement rather than replace research with real customers."],
   ["Does it cover AI assistants too?", "Yes. Every usability test includes an AI assistant persona, plus an AI accessibility report on whether assistants can find, read and use your pages."],
   ["Can I test any website?", "Any public website. Logged-in pages, localhost and private networks aren't supported, and AI personas never buy anything or submit forms that change data."],
   ["How long does a usability test take?", "Usually a few minutes. You can follow each AI persona live while it works."],

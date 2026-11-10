@@ -87,7 +87,7 @@ export function SessionDetail({
           <dl className="grid gap-4 px-5 py-5">
             <PersonaFact label="Motivation" value={persona?.goal} />
             <PersonaFact label="How they browse" value={conf.behaviour} />
-            <PersonaFact label="Trusts the answer when" value={conf.success_criteria} />
+            <PersonaFact label="Feels confident when" value={conf.success_criteria} />
           </dl>
         </Card>
       </div>

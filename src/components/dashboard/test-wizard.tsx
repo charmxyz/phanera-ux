@@ -115,7 +115,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
       <Step
         n={3}
         title="Personas"
-        description={`Every AI persona attempts the user task above, each with their own motivation and browsing style. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
+        description={`Every AI persona attempts the same user task above. What differs is what drives them and how that shapes the way they browse. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={regenerate} disabled={regenPending}>

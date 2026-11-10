@@ -61,7 +61,7 @@ export function PersonaEditor({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{persona?.name ? `Edit ${persona.name}` : "Add persona"}</DialogTitle>
-          <DialogDescription>Every AI persona attempts the same user task. Describe who they are, why they care and how they browse, or generate one automatically.</DialogDescription>
+          <DialogDescription>Every AI persona attempts the same user task. Describe who they are, what drives them and how that shapes the way they browse, or generate one automatically.</DialogDescription>
         </DialogHeader>
         {onGenerate && !persona && (
           <Button type="button" variant="outline" onClick={generate} disabled={generating} className="w-full">
@@ -80,10 +80,10 @@ export function PersonaEditor({
             <Field label="Name" id="p-name"><Input id="p-name" value={draft.name} onChange={(e) => set("name", e.target.value)} maxLength={40} required /></Field>
             <Field label="Role" id="p-role"><Input id="p-role" value={draft.role} onChange={(e) => set("role", e.target.value)} maxLength={60} required /></Field>
           </div>
-          <Field label="Motivation" id="p-goal"><Textarea id="p-goal" value={draft.goal} onChange={(e) => set("goal", e.target.value)} maxLength={300} rows={2} required /></Field>
-          <Field label="Context" id="p-context"><Textarea id="p-context" value={draft.context} onChange={(e) => set("context", e.target.value)} maxLength={400} rows={2} /></Field>
-          <Field label="Behaviour" id="p-behaviour"><Textarea id="p-behaviour" value={draft.behaviour} onChange={(e) => set("behaviour", e.target.value)} maxLength={300} rows={2} /></Field>
-          <Field label="Trusts the answer when" id="p-success"><Input id="p-success" value={draft.success_criteria} onChange={(e) => set("success_criteria", e.target.value)} maxLength={200} /></Field>
+          <Field label="Motivation" id="p-goal"><Textarea id="p-goal" value={draft.goal} onChange={(e) => set("goal", e.target.value)} maxLength={300} rows={2} required placeholder="The underlying need or concern driving them, not a task. E.g. Saving time and avoiding complexity." /></Field>
+          <Field label="Context" id="p-context"><Textarea id="p-context" value={draft.context} onChange={(e) => set("context", e.target.value)} maxLength={400} rows={2} placeholder="Their situation, experience and constraints." /></Field>
+          <Field label="Behaviour" id="p-behaviour"><Textarea id="p-behaviour" value={draft.behaviour} onChange={(e) => set("behaviour", e.target.value)} maxLength={300} rows={2} placeholder="How that motivation shows up: what they read, how they decide, how they react to friction." /></Field>
+          <Field label="Feels confident when" id="p-success"><Input id="p-success" value={draft.success_criteria} onChange={(e) => set("success_criteria", e.target.value)} maxLength={200} /></Field>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Type" id="p-kind">
               <select id="p-kind" className={selectClass} value={draft.kind} onChange={(e) => set("kind", e.target.value as Persona["kind"])}>

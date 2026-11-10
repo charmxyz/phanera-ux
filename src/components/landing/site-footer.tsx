@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { CONTACT_EMAIL } from "@/lib/contact";
 import { CurrentYear } from "./current-year";
 import { DotWordmark } from "./dot-wordmark";
 
@@ -18,6 +19,7 @@ export function SiteFooter() {
           <Link href="/login" className="hover:text-foreground">Login</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-foreground">Contact</a>
         </nav>
       </div>
       <div className="container-marketing pt-14 sm:pt-20">

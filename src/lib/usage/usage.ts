@@ -14,8 +14,11 @@ export async function getUsageSummary(userId: string) {
   let q = db.from("usage").select("quantity").eq("user_id", userId).eq("usage_type", "test_run");
   if (limits.monthlyTestRuns != null) q = q.gte("created_at", monthStart.toISOString());
   const { data } = await q;
-  const used = (data ?? []).reduce((a, r) => a + r.quantity, 0);
-  const allowance = limits.lifetimeTestRuns ?? limits.monthlyTestRuns ?? 0;
+  // Rows with a negative quantity are manual credits (extra tests granted to an account),
+  // so they raise the allowance instead of lowering the used count.
+  const used = (data ?? []).reduce((a, r) => a + Math.max(0, r.quantity), 0);
+  const credits = (data ?? []).reduce((a, r) => a + Math.max(0, -r.quantity), 0);
+  const allowance = (limits.lifetimeTestRuns ?? limits.monthlyTestRuns ?? 0) + credits;
   return {
     plan,
     limits,

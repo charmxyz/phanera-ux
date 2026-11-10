@@ -1,7 +1,7 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { generateStructured } from "@/lib/claude/client";
-import { evaluationPrompt, findingsPrompt } from "@/lib/claude/prompts";
+import { dateRule, evaluationPrompt, findingsPrompt } from "@/lib/claude/prompts";
 import { SessionEvaluationSchema, FindingsReportSchema, type Persona, type SessionEvaluation } from "@/lib/claude/schemas";
 import type { AgentRunResult } from "@/lib/agents/persona-agent";
 
@@ -39,7 +39,7 @@ export async function evaluateSession(input: {
       "Evaluate this session.",
     ].join("\n\n"),
   });
-  return generateStructured({ schema: SessionEvaluationSchema, system: evaluationPrompt.system, content, effort: "medium", maxTokens: 8000, timeoutMs: 180_000, maxRetries: 2 });
+  return generateStructured({ schema: SessionEvaluationSchema, system: `${evaluationPrompt.system}\n${dateRule()}`, content, effort: "medium", maxTokens: 8000, timeoutMs: 180_000, maxRetries: 2 });
 }
 
 export async function synthesiseFindings(input: {
@@ -50,7 +50,7 @@ export async function synthesiseFindings(input: {
 }) {
   return generateStructured({
     schema: FindingsReportSchema,
-    system: findingsPrompt.system,
+    system: `${findingsPrompt.system}\n${dateRule()}`,
     effort: "high",
     timeoutMs: 300_000,
     maxRetries: 2,

@@ -63,6 +63,33 @@ export const personaPrompt = {
   },
 };
 
+/** One additional persona that must differ from the ones the user already has. */
+export const extraPersonaPrompt = {
+  system: [
+    "You design one realistic test persona for exploring a website.",
+    "Personas are fictional and simulated; never imply they are real users.",
+    "The persona must be a plausible real prospect or customer of THIS product: base their role, industry, company size, seniority and situation on the product's actual target audience and use cases from the website understanding. Do not invent generic visitors.",
+    "The persona attempts the same test goal as everyone else. They differ only in who they are: motivation, context, familiarity, behaviour and patience.",
+    "The new persona must be clearly DIFFERENT from every existing persona: use a different first name, a different role or segment, a different motivation, and a different browsing behaviour. Prefer an audience segment that is not yet covered.",
+    "Browse on desktop unless the test goal explicitly mentions mobile, phones or tablets.",
+    "The `goal` field is the persona's motivation (why they care), not a separate task.",
+    "Use kind 'human' unless asked otherwise.",
+    "Everything must be doable (or verifiably not doable) by browsing the public site without logging in or paying.",
+  ].join("\n"),
+  user(input: { summary: unknown; testGoal?: string; existing: { name: string; role: string; kind: string; goal: string; behaviour: string }[] }) {
+    return [
+      `Website understanding (JSON): ${JSON.stringify(input.summary)}`,
+      input.testGoal ? `The test goal every persona will attempt: "${input.testGoal}".` : "",
+      input.existing.length
+        ? `Existing personas (do NOT repeat their names, roles, motivations or behaviours):\n${input.existing.map((p) => `- ${p.name}, ${p.role} (${p.kind}): ${p.goal} | ${p.behaviour}`).join("\n")}`
+        : "",
+      "Generate exactly 1 new persona.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  },
+};
+
 // ---- Browser agent instructions ---------------------------------------------
 export const browserAgentPrompt = {
   system(input: {

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Loader2Icon, SparklesIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,12 +30,23 @@ export function PersonaEditor({
   persona,
   onOpenChange,
   onSave,
+  onGenerate,
 }: {
   open: boolean;
   persona: Persona | null;
   onOpenChange: (open: boolean) => void;
   onSave: (p: Persona) => void;
+  /** Returns an AI-generated persona to prefill the form, or an error message. */
+  onGenerate?: () => Promise<{ ok: true; persona: Persona } | { ok: false; error: string }>;
 }) {
+  const [generating, startGenerate] = useTransition();
+  const generate = () =>
+    onGenerate &&
+    startGenerate(async () => {
+      const res = await onGenerate();
+      if (res.ok) setDraft(res.persona);
+      else toast.error(res.error);
+    });
   const [draft, setDraft] = useState<Persona>(persona ?? BLANK_PERSONA);
   const [prevPersona, setPrevPersona] = useState(persona);
   if (persona !== prevPersona) {
@@ -47,11 +60,17 @@ export function PersonaEditor({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{persona?.name ? `Edit ${persona.name}` : "Custom persona"}</DialogTitle>
-          <DialogDescription>Every AI persona attempts the same user task. Describe who they are, why they care and how they browse.</DialogDescription>
+          <DialogTitle>{persona?.name ? `Edit ${persona.name}` : "Add persona"}</DialogTitle>
+          <DialogDescription>Every AI persona attempts the same user task. Describe who they are, why they care and how they browse, or generate one automatically.</DialogDescription>
         </DialogHeader>
+        {onGenerate && !persona && (
+          <Button type="button" variant="outline" onClick={generate} disabled={generating} className="w-full">
+            {generating ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
+            {generating ? "Generating persona…" : "Generate persona automatically"}
+          </Button>
+        )}
         <form
-          className="grid gap-3"
+          className={`grid gap-3 transition-opacity ${generating ? "pointer-events-none opacity-50" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
             if (valid) onSave({ ...draft, name: draft.name.trim(), role: draft.role.trim(), goal: draft.goal.trim() });
@@ -88,7 +107,7 @@ export function PersonaEditor({
           </div>
           <DialogFooter className="mt-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={!valid}>Save persona</Button>
+            <Button type="submit" disabled={!valid || generating}>Save persona</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -9,7 +9,7 @@ import { normalizeUrl } from "@/lib/validation/url";
 import { countScansToday, getUsageSummary } from "@/lib/usage/usage";
 import { enqueueDiscovery, enqueueTestRun } from "@/lib/jobs/dispatch";
 import { generateStructured } from "@/lib/claude/client";
-import { personaPrompt } from "@/lib/claude/prompts";
+import { extraPersonaPrompt, personaPrompt } from "@/lib/claude/prompts";
 import { PersonaSchema, PersonaSuggestionsSchema, desktopUnlessAsked, type Persona } from "@/lib/claude/schemas";
 import type { Json } from "@/types/database";
 import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
@@ -78,6 +78,36 @@ export async function regeneratePersonas(websiteId: string, goal: string): Promi
     return { ok: true, personas };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not generate personas." };
+  }
+}
+
+/** Generates one more persona for the product's real audience, distinct from `existing`. */
+export async function generateExtraPersona(websiteId: string, goal: string, existing: Persona[]): Promise<Result<{ persona: Persona }>> {
+  try {
+    const user = await requireUser();
+    const db = createAdminClient();
+    const { data: website } = await db.from("websites").select("summary, user_id").eq("id", websiteId).single();
+    if (!website || website.user_id !== user.id) return { ok: false, error: "Website not found." };
+    if (!website.summary) return { ok: false, error: "Analyse the website first." };
+    const others = z.array(PersonaSchema).max(50).catch([]).parse(existing);
+    const out = await generateStructured({
+      schema: PersonaSuggestionsSchema,
+      system: extraPersonaPrompt.system,
+      content: extraPersonaPrompt.user({
+        summary: website.summary,
+        testGoal: goal.slice(0, 500) || undefined,
+        existing: others.map((p) => ({ name: p.name, role: p.role, kind: p.kind, goal: p.goal.slice(0, 300), behaviour: p.behaviour.slice(0, 300) })),
+      }),
+      effort: "low",
+      maxTokens: 4000,
+    });
+    const taken = new Set(others.map((p) => p.name.trim().toLowerCase()));
+    const candidates = desktopUnlessAsked(out.personas, goal);
+    const persona = candidates.find((p) => !taken.has(p.name.trim().toLowerCase())) ?? candidates[0];
+    if (!persona) return { ok: false, error: "Could not generate a persona." };
+    return { ok: true, persona: { ...persona, name: persona.name.slice(0, 40), role: persona.role.slice(0, 60) } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not generate a persona." };
   }
 }
 

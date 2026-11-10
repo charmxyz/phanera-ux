@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AntAvatar } from "@/components/ants/pixel-ant";
 import { PersonaEditor } from "@/components/personas/persona-editor";
-import { createTest, regeneratePersonas } from "@/app/actions/dashboard";
+import { createTest, generateExtraPersona, regeneratePersonas } from "@/app/actions/dashboard";
 import type { Persona } from "@/lib/claude/schemas";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +122,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
               {regenPending ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />} Regenerate
             </Button>
             <Button variant="outline" size="sm" onClick={() => setEditing({ key: null, persona: null })}>
-              <PlusIcon /> Custom
+              <PlusIcon /> Add persona
             </Button>
           </div>
         }
@@ -157,7 +157,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
               </div>
             </div>
           ))}
-          {items.length === 0 && <p className="text-sm text-muted-foreground">No personas. Regenerate suggestions or add a custom persona.</p>}
+          {items.length === 0 && <p className="text-sm text-muted-foreground">No personas. Regenerate suggestions or add a persona.</p>}
         </div>
         {overLimit && <p className="mt-3 text-sm text-destructive">Select at most {limits.personasPerTest} personas.</p>}
       </Step>
@@ -199,6 +199,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
         open={editing !== null}
         persona={editing?.persona ?? null}
         onOpenChange={(o) => !o && setEditing(null)}
+        onGenerate={() => generateExtraPersona(website.id, goal, items.map((x) => x.persona))}
         onSave={(p) => {
           setItems((xs) =>
             editing?.key

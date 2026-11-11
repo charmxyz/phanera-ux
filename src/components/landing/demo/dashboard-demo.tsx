@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowRightIcon, BotIcon, CheckIcon, ClipboardCheckIcon, CompassIcon, GlobeIcon, HistoryIcon, LayoutDashboardIcon,
   Loader2Icon, MonitorIcon, PencilIcon, PlusIcon, RefreshCwIcon, SettingsIcon, ShieldCheckIcon, SmartphoneIcon,
-  TargetIcon, Trash2Icon, UsersIcon, CheckCircle2Icon,
+  TargetIcon, Trash2Icon, UsersIcon, AlertTriangleIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { AntMarch } from "@/components/landing/ants/ant-march";
 import { OutcomeLabel, StatusLabel } from "@/components/sessions/status";
 import type { Outcome } from "@/types/database";
 import { cn } from "@/lib/utils";
+import { DOMAIN, FINDINGS, GOAL, PERSONAS, SEV_DOT, personaSeed } from "./shop-session";
 
 /**
  * A scripted, auto-playing replay of the real dashboard: same UI components and classes as
@@ -25,8 +26,7 @@ import { cn } from "@/lib/utils";
  */
 
 /* ------------------------------------------------------------------ Script */
-const DOMAIN = "stripe.com";
-const TYPED = "stripe.com";
+const TYPED = DOMAIN;
 const GOAL_INDEX = 0;
 const MAX_ACTIONS = 20;
 
@@ -57,18 +57,11 @@ const STAGES = [
 const PAGES = 48;
 
 const GOALS = [
-  "Can a small online store owner find out what a card payment will cost them?",
-  "Can a developer find how to accept their first payment in the docs?",
-  "Can a visitor tell which product they need to charge for subscriptions?",
+  GOAL,
+  "Can a shopper find a charger under $30 that arrives tomorrow?",
+  "Can a visitor find the returns policy before buying?",
 ];
 
-type DemoPersona = { name: string; role: string; device: "desktop" | "mobile"; ai?: boolean; goal: string; behaviour: string };
-const PERSONAS: DemoPersona[] = [
-  { name: "Jordan", role: "Small business owner", device: "desktop", goal: "Not losing sales to fees they didn't see coming.", behaviour: "Skims headings, then reads pricing closely." },
-  { name: "Priya", role: "Engineering lead", device: "desktop", goal: "Keeping the integration simple enough to own long term.", behaviour: "Goes straight to the docs and API reference." },
-  { name: "Atlas", role: "AI research assistant", device: "desktop", ai: true, goal: "Giving its user an answer they can rely on.", behaviour: "Reads page structure and text, not visuals." },
-  { name: "Marco", role: "Finance manager", device: "mobile", goal: "Knowing exactly what each payment will cost the business.", behaviour: "Reads the fine print on a phone between meetings." },
-];
 const PRESELECTED = 3; // the 4th is ticked by the cursor
 
 /** Per-persona live activity, relative to T.run. Mirrors the strings the agent writes to sessions.current_activity. */
@@ -76,54 +69,49 @@ type Beat = { at: number; text: string; actions: number; status?: "queued" | "ru
 const RUN: Beat[][] = [
   [
     { at: 0, text: "Starting browser", actions: 0, status: "running" },
-    { at: 800, text: "Opening https://stripe.com", actions: 0 },
-    { at: 2000, text: "Reading the page", actions: 0 },
-    { at: 3200, text: "Opening Pricing from the main navigation", actions: 1 },
-    { at: 4600, text: "Scrolling for the rate on cards from outside Europe", actions: 4 },
-    { at: 6400, text: "Checking whether other payment methods cost extra", actions: 5 },
-    { at: 7600, text: "Heading back to the pricing table", actions: 6 },
-    { at: 8400, text: "Evaluating session", actions: 7 },
-    { at: 9200, text: "", actions: 7, status: "completed", outcome: "success" },
+    { at: 800, text: "Opening https://northcart.shop", actions: 0 },
+    { at: 1800, text: "Searching for “usb-c charger”", actions: 1 },
+    { at: 3000, text: "Opening the Voltaro 65W charger", actions: 2 },
+    { at: 4300, text: "Adding the charger and a cable 2-pack to the cart", actions: 4 },
+    { at: 5600, text: "Tapping “−” to take the cable out of the cart", actions: 5 },
+    { at: 6800, text: "Cable quantity shows −1 and the subtotal dropped to $18.00", actions: 6 },
+    { at: 7800, text: "Checking the order total at checkout", actions: 7 },
+    { at: 8600, text: "Evaluating session", actions: 8 },
+    { at: 9300, text: "", actions: 8, status: "completed", outcome: "partial_success" },
   ],
   [
     { at: 0, text: "Starting browser", actions: 0, status: "running" },
-    { at: 1000, text: "Opening https://stripe.com", actions: 0 },
-    { at: 2400, text: "Reading the page", actions: 0 },
-    { at: 3900, text: "Opening Docs to look for fees in the API reference", actions: 1 },
-    { at: 5700, text: "Searching the docs for “pricing”", actions: 2 },
-    { at: 7600, text: "Following a link back to /pricing", actions: 3 },
-    { at: 9300, text: "Evaluating session", actions: 5 },
-    { at: 10100, text: "", actions: 5, status: "completed", outcome: "success" },
+    { at: 1000, text: "Opening https://northcart.shop", actions: 0 },
+    { at: 2400, text: "Browsing Electronics for a wall charger", actions: 2 },
+    { at: 4100, text: "Reading the product details and reviews", actions: 4 },
+    { at: 5900, text: "“−” left the item at 0, so using Delete instead", actions: 6 },
+    { at: 7700, text: "Reading every line of the order summary", actions: 8 },
+    { at: 9300, text: "Evaluating session", actions: 9 },
+    { at: 10100, text: "", actions: 9, status: "completed", outcome: "success" },
   ],
   [
     { at: 0, text: "Starting browser", actions: 0, status: "running" },
-    { at: 700, text: "Opening https://stripe.com", actions: 0 },
-    { at: 1600, text: "Reading the page", actions: 0 },
-    { at: 2800, text: "Reading the pricing page's headings and text", actions: 1 },
-    { at: 4400, text: "Extracting fees for cards, wallets and payouts", actions: 2 },
-    { at: 6000, text: "Evaluating session", actions: 3 },
-    { at: 6800, text: "", actions: 3, status: "completed", outcome: "success" },
+    { at: 700, text: "Opening https://northcart.shop", actions: 0 },
+    { at: 1600, text: "Reading the search results' structure and prices", actions: 1 },
+    { at: 2900, text: "Comparing three chargers under $30", actions: 3 },
+    { at: 4400, text: "Adding the cheapest 65W charger to the cart", actions: 4 },
+    { at: 6000, text: "Evaluating session", actions: 6 },
+    { at: 6800, text: "", actions: 6, status: "completed", outcome: "success" },
   ],
   [
     { at: 0, text: "Waiting for a browser", actions: 0, status: "queued" },
     { at: 1500, text: "Starting browser", actions: 0, status: "running" },
-    { at: 2400, text: "Opening https://stripe.com", actions: 0 },
-    { at: 3800, text: "Reading the page", actions: 0 },
-    { at: 5400, text: "Opening the mobile menu to find Pricing", actions: 2 },
-    { at: 7000, text: "Scrolling the pricing page for the full fee breakdown", actions: 4 },
-    { at: 8800, text: "Looking for a way to estimate the total per payment", actions: 6 },
-    { at: 9900, text: "Evaluating session", actions: 7 },
-    { at: 10600, text: "", actions: 7, status: "completed", outcome: "partial_success" },
+    { at: 2400, text: "Opening https://northcart.shop", actions: 0 },
+    { at: 3600, text: "Searching for a cheap USB-C charger", actions: 1 },
+    { at: 5200, text: "Adding the charger, then a second one by mistake", actions: 3 },
+    { at: 6900, text: "Tapping “−” quickly: quantity jumped from 2 to −1", actions: 6 },
+    { at: 8600, text: "Checkout shows a negative line for the charger", actions: 7 },
+    { at: 9900, text: "Evaluating session", actions: 8 },
+    { at: 10600, text: "", actions: 8, status: "completed", outcome: "partial_success" },
   ],
 ];
 const RUN_DONE = 10600;
 
-const FINDINGS = [
-  { sev: "High", tone: "bg-destructive", t: "The rate for cards from outside Europe is three screens down", p: ["Jordan", "Marco"] },
-  { sev: "Medium", tone: "bg-warning", t: "“See more payment methods” leads to a page with no prices", p: ["Jordan"] },
-  { sev: "Medium", tone: "bg-warning", t: "Docs search doesn't surface pricing", p: ["Priya"] },
-  { sev: "Low", tone: "bg-muted-foreground/50", t: "Fees aren't marked up as structured data", p: ["Atlas"] },
-];
 
 /** Where the cursor heads, and when it clicks. Targets are `data-demo` ids measured live. */
 const CURSOR: { at: number; target: string }[] = [
@@ -368,7 +356,7 @@ function Header({ title, description, eyebrow, actions }: { title: React.ReactNo
 const pressed = (t: number, at: number) => t >= at - 120 && t < at + 160;
 const Favicon = ({ className }: { className?: string }) => (
   // eslint-disable-next-line @next/next/no-img-element
-  <img src={`https://www.google.com/s2/favicons?domain=${DOMAIN}&sz=64`} alt="" className={cn("rounded-sm", className)} />
+  <img src="/demo/shop/favicon.svg" alt="" className={cn("rounded-sm", className)} />
 );
 
 /* ------------------------------------------------------------------ Scene: confirm URL */
@@ -466,9 +454,9 @@ function SceneWizard({ t }: { t: number }) {
         <div className="flex items-start gap-3">
           <Favicon className="mt-0.5 size-5" />
           <div className="grid gap-1">
-            <p className="font-medium">Stripe <span className="ml-1 font-mono text-xs text-muted-foreground">https://{DOMAIN}</span></p>
-            <p className="text-sm text-muted-foreground">Financial infrastructure for accepting payments, sending payouts and managing a business online.</p>
-            <p className="text-xs text-muted-foreground">Fintech · Payments platform · {PAGES} pages analysed</p>
+            <p className="font-medium">Northcart <span className="ml-1 font-mono text-xs text-muted-foreground">https://{DOMAIN}</span></p>
+            <p className="text-sm text-muted-foreground">Online store for electronics, home and everyday essentials, with free delivery on most orders.</p>
+            <p className="text-xs text-muted-foreground">E-commerce · Online marketplace · {PAGES} pages analysed</p>
           </div>
         </div>
       </Step>
@@ -680,11 +668,11 @@ function Report({ t }: { t: number }) {
         <div className="grid content-start gap-3 p-6">
           <span className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Test results</span>
           <div className="flex items-start gap-3">
-            <CheckCircle2Icon className="mt-1 size-6 shrink-0 text-success" />
-            <h2 className="text-2xl leading-tight font-semibold tracking-tight text-balance">3 of 4 personas completed the task</h2>
+            <AlertTriangleIcon className="mt-1 size-6 shrink-0 text-warning" />
+            <h2 className="text-2xl leading-tight font-semibold tracking-tight text-balance">2 of 4 personas completed the task</h2>
           </div>
           <p className="max-w-prose leading-relaxed text-pretty text-muted-foreground">
-            Mostly. Pricing is one click from the homepage and UK and EU card rates are up front, but the rate for cards from outside Europe, and the extra 2% for currency conversion, sit three screens further down.
+            Everyone reached checkout, but the cart lets a quantity drop below zero. Dana and Marco tapped “−” to remove an item and ended up at −1, which took the item&apos;s price off the order total. Place your order stayed enabled.
           </p>
         </div>
         <dl className="grid grid-cols-3 border-l border-border">
@@ -715,10 +703,10 @@ function Report({ t }: { t: number }) {
           {FINDINGS.map((f, i) =>
             t >= 600 + i * 350 ? (
               <li key={f.t} data-demo={`finding-${i}`} className="flex animate-in items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 fade-in slide-in-from-bottom-1 duration-300">
-                <span className={cn("size-2 shrink-0 rounded-full", f.tone)} />
+                <span className={cn("size-2 shrink-0 rounded-full", SEV_DOT[f.sev])} />
                 <span className="w-16 shrink-0 text-xs text-muted-foreground">{f.sev}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{f.t}</span>
-                <span className="flex -space-x-1">{f.p.map((n) => <AntAvatar key={n} seed={n + PERSONAS.find((x) => x.name === n)!.role} size={20} className="rounded-full bg-card ring-2 ring-card" />)}</span>
+                <span className="flex -space-x-1">{f.p.map((n) => <AntAvatar key={n} seed={personaSeed(n)} size={20} className="rounded-full bg-card ring-2 ring-card" />)}</span>
               </li>
             ) : null,
           )}

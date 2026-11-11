@@ -233,20 +233,37 @@ export function Pricing({ heading = true }: { heading?: boolean }) {
         {heading && <SectionHeading eyebrow="Pricing" title="Start free. Scale when you're ready." />}
         <div className="grid gap-4 lg:grid-cols-3">
           {TIERS.map((t) => (
-            <Card key={t.name} className={cn("gap-6", t.highlight && "ring-primary/50")}>
+            <Card
+              key={t.name}
+              className={cn(
+                "gap-6",
+                t.highlight && "relative isolate overflow-hidden shadow-xl ring-2 ring-primary lg:-my-4 lg:py-10",
+              )}
+            >
+              {t.highlight && (
+                <>
+                  {/* A colony at work in the top corner: same voxel ants as the final CTA, faded out before the price and features. */}
+                  <div aria-hidden className="bg-studio absolute inset-0 -z-10" />
+                  <AntMarch className="-z-10 [mask-image:radial-gradient(ellipse_75%_48%_at_100%_0%,black_35%,transparent_100%)]" />
+                </>
+              )}
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>{t.name}</CardTitle>
+                  <CardTitle className={cn(t.highlight && "text-lg")}>{t.name}</CardTitle>
                   {!t.available && <Badge variant="secondary">Coming soon</Badge>}
+                  {t.highlight && <Badge>Most popular</Badge>}
                 </div>
-                <p className="mt-2"><span className="text-3xl font-semibold tracking-tight">{t.price}</span><span className="text-muted-foreground">{t.period}</span></p>
+                <p className="mt-2">
+                  <span className={cn("font-semibold tracking-tight", t.highlight ? "text-5xl" : "text-3xl")}>{t.price}</span>
+                  <span className="text-muted-foreground">{t.period}</span>
+                </p>
               </CardHeader>
               <CardContent className="grid gap-6">
                 <ul className="grid gap-2 text-sm">
-                  {t.features.map((f) => <li key={f} className="flex gap-2"><CheckIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />{f}</li>)}
+                  {t.features.map((f) => <li key={f} className="flex gap-2"><CheckIcon className={cn("mt-0.5 size-4 shrink-0", t.highlight ? "text-primary" : "text-muted-foreground")} />{f}</li>)}
                 </ul>
                 {t.href ? (
-                  <Link href={t.href} className={buttonVariants({ variant: t.name === "Free" ? "default" : "outline", size: "lg" })}>{t.cta}</Link>
+                  <Link href={t.href} className={buttonVariants({ variant: t.highlight ? "default" : "secondary", size: "lg" })}>{t.cta}</Link>
                 ) : (
                   <span className={buttonVariants({ variant: "outline", size: "lg", className: "pointer-events-none opacity-60" })} aria-disabled>{t.cta}</span>
                 )}

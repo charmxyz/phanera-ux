@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckIcon, ClipboardCheckIcon, FileSearchIcon, GlobeIcon, MousePointerClickIcon, NetworkIcon, ScanEyeIcon, ScanTextIcon, CodeXmlIcon, UsersIcon, WrenchIcon, type LucideIcon } from "lucide-react";
+import { CheckIcon, ClipboardCheckIcon, FileSearchIcon, GlobeIcon, MousePointerClickIcon, NetworkIcon, ScanEyeIcon, ScanTextIcon, CodeXmlIcon, UsersIcon, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -144,11 +144,8 @@ export function SessionReplaySection() {
 }
 
 /* --------------------------------------------------------------- Findings */
-// The findings from the northcart.shop test in the demo above, as a board by severity.
-const BOARD = (["High", "Medium", "Low"] as const).map((sev) => ({ sev, items: FINDINGS.filter((f) => f.sev === sev) }));
-
-// Evidence crop on the cart screenshot (1366×860): the cable row with its "−1" quantity.
-const CROP = { x: 255, y: 430, w: 340, h: 145, W: 1366 };
+// The findings from the northcart.shop test in the demo above.
+const BOARD = (["Low", "Medium", "High"] as const).map((sev) => ({ label: sev, dot: SEV_DOT[sev], items: FINDINGS.filter((f) => f.sev === sev) }));
 
 export function Findings() {
   return (
@@ -157,37 +154,19 @@ export function Findings() {
         <SectionHeading eyebrow="Usability findings" icon={ClipboardCheckIcon} title="Turn observations into improvements.">
           Get prioritised usability findings, supporting evidence and suggested fixes in one shareable report.
         </SectionHeading>
-        <div className="mx-auto grid max-w-5xl items-start gap-3 md:grid-cols-3">
+        <div className="mx-auto grid max-w-5xl gap-3 md:grid-cols-3">
           {BOARD.map((col) => (
-            <div key={col.sev} className="flex flex-col gap-2.5 rounded-2xl bg-[#f6f6f7] p-3">
+            <div key={col.label} className="flex flex-col gap-2.5 rounded-2xl bg-[#f6f6f7] p-3">
               <div className="flex items-center gap-2 px-1 text-sm">
-                <span className={cn("size-2 rounded-full", SEV_DOT[col.sev])} />
-                <span className="font-medium">{col.sev}</span>
+                <span className={cn("size-2 rounded-full", col.dot)} />
+                <span className="font-medium">{col.label}</span>
                 <span className="text-xs text-muted-foreground">{col.items.length}</span>
               </div>
               {col.items.map((f) => (
-                <div key={f.t} className="grid gap-3 rounded-xl border border-border bg-card p-3.5 shadow-xs">
-                  <p className="text-sm leading-snug font-medium text-pretty">{f.t}</p>
-                  {f.evidence && (
-                    <figure className="grid gap-1.5">
-                      <div className="relative overflow-hidden rounded-md border border-border" style={{ aspectRatio: `${CROP.w} / ${CROP.h}` }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={f.evidence.shot}
-                          alt="The cart with the cable at quantity −1"
-                          className="absolute max-w-none"
-                          style={{ width: `${(CROP.W / CROP.w) * 100}%`, left: `${(-CROP.x / CROP.w) * 100}%`, top: `${(-CROP.y / CROP.h) * 100}%` }}
-                        />
-                      </div>
-                      <figcaption className="text-xs leading-snug text-pretty text-muted-foreground">{f.evidence.caption}</figcaption>
-                    </figure>
-                  )}
-                  <div className="grid gap-0.5 border-t border-border pt-2.5">
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><WrenchIcon className="size-3" />Suggested fix</span>
-                    <p className="text-sm leading-snug text-pretty">{f.fix}</p>
-                  </div>
+                <div key={f.t} className="grid gap-2.5 rounded-xl border border-border bg-card p-3.5 shadow-xs">
+                  <p className="text-sm leading-snug font-medium">{f.t}</p>
                   <div className="flex items-center gap-1.5">
-                    <span className="flex -space-x-1">{f.p.map((n) => <AntAvatar key={n} seed={personaSeed(n)} size={18} className="rounded-full bg-card ring-2 ring-card" />)}</span>
+                    {f.p.map((n) => <AntAvatar key={n} seed={personaSeed(n)} size={18} />)}
                     <span className="text-xs text-muted-foreground">{f.p.join(", ")}</span>
                   </div>
                 </div>
@@ -195,7 +174,6 @@ export function Findings() {
             </div>
           ))}
         </div>
-        <p className="mt-4 text-center text-xs text-muted-foreground">Findings from the northcart.shop test above.</p>
       </div>
     </section>
   );

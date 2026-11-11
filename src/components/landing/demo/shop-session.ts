@@ -28,27 +28,14 @@ export const PERSONAS: DemoPersona[] = [
 ];
 export const personaSeed = (name: string) => name + (PERSONAS.find((p) => p.name === name)?.role ?? "");
 
-/** The test's usability findings, most severe first, with the evidence and suggested fix the report gives. */
+/** The test's usability findings, most severe first. */
 export type Severity = "High" | "Medium" | "Low";
 export const SEV_DOT: Record<Severity, string> = { High: "bg-destructive", Medium: "bg-warning", Low: "bg-muted-foreground/50" };
-export const FINDINGS: { sev: Severity; t: string; p: string[]; fix: string; evidence?: { shot: string; caption: string } }[] = [
-  {
-    sev: "High", t: "Cart quantity can go to −1, taking the item's price off the order total", p: ["Dana", "Marco"],
-    fix: "Keep quantity at 1 or more in the cart and on the server, and reject any order line below 1 at checkout.",
-    evidence: { shot: "/demo/shop/cart-negative.jpg", caption: "Dana, step 6: “Quantity now reads −1. Subtotal (0 items): $18.00.”" },
-  },
-  {
-    sev: "Medium", t: "“−” at quantity 1 leaves the item in the cart at 0 instead of removing it", p: ["Dana", "Ken"],
-    fix: "At quantity 1, turn “−” into a Delete button so one tap removes the item.",
-  },
-  {
-    sev: "Medium", t: "Place your order stays enabled with a negative quantity in the order", p: ["Dana", "Marco"],
-    fix: "Check the cart before checkout opens. Disable Place your order and say which line needs fixing.",
-  },
-  {
-    sev: "Low", t: "Quantity buttons have no accessible names", p: ["Atlas"],
-    fix: "Label them, e.g. “Decrease quantity of Kordwell cable”, so assistants and screen readers know what they change.",
-  },
+export const FINDINGS: { sev: Severity; t: string; p: string[] }[] = [
+  { sev: "High", t: "Cart quantity can go to −1, taking the item's price off the order total", p: ["Dana", "Marco"] },
+  { sev: "Medium", t: "“−” at quantity 1 leaves the item in the cart at 0 instead of removing it", p: ["Dana", "Ken"] },
+  { sev: "Medium", t: "Place your order stays enabled with a negative quantity in the order", p: ["Dana", "Marco"] },
+  { sev: "Low", t: "Quantity buttons have no accessible names", p: ["Atlas"] },
 ];
 
 const T0 = Date.parse("2026-11-10T12:20:00Z");

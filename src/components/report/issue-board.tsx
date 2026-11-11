@@ -21,6 +21,8 @@ export type Ticket = {
   recommendation: string;
   evidence: { persona: string; step: number | null; note: string }[];
   shot: { url: string; caption: string } | null;
+  /** Rebuilt from the recorded steps that led to the first evidence step. */
+  reproduce?: string[];
 };
 
 type PersonaRef = { name: string; role: string };
@@ -182,11 +184,18 @@ export function IssueBoard({ tickets, personas }: { tickets: Ticket[]; personas:
                   <SheetDescription className="text-[15px] leading-relaxed text-foreground">{open.description}</SheetDescription>
                 </Block>
 
+                {open.reproduce && open.reproduce.length > 0 && (
+                  <Block icon={<ListChecksIcon />} title="Steps to reproduce">
+                    <ol className="grid list-decimal gap-1.5 pl-5 text-[15px] leading-relaxed marker:text-muted-foreground">
+                      {open.reproduce.map((s, i) => (
+                        <li key={i} className="pl-1 [overflow-wrap:anywhere]">{s}</li>
+                      ))}
+                    </ol>
+                  </Block>
+                )}
+
                 <Block icon={<WrenchIcon />} title="Recommended fix">
-                  <div className="flex gap-3 rounded-xl border border-success/25 bg-success/5 p-4">
-                    <ListChecksIcon className="mt-0.5 size-4 shrink-0 text-success" />
-                    <p className="leading-relaxed">{open.recommendation}</p>
-                  </div>
+                  <p className="text-[15px] leading-relaxed text-foreground">{open.recommendation}</p>
                 </Block>
 
                 {open.shot && (

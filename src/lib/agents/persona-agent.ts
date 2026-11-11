@@ -116,8 +116,31 @@ async function resolve(page: Page, el: Element): Promise<Locator | null> {
   return null;
 }
 
+/** Changes whenever the visible page does: URL, visible text (hashed, so a carousel's "2/136" → "3/136" counts), height, open widgets. */
 const pageFingerprint = (page: Page) =>
-  page.evaluate(() => `${location.href}|${document.body.innerText.length}|${document.querySelectorAll("[aria-expanded=true],[open]").length}`).catch(() => "");
+  page
+    .evaluate(() => {
+      const text = document.body.innerText;
+      let h = 0;
+      for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+      return `${location.href}|${h}|${document.body.scrollHeight}|${document.querySelectorAll("[aria-expanded=true],[open]").length}`;
+    })
+    .catch(() => "");
+
+/**
+ * True if hovering the element changes the page (a hover menu or dropdown). Clicking such a
+ * control often toggles it straight back closed, which otherwise looks like "nothing changed".
+ * Leaves the pointer over the element, so the opened menu is visible for the next step.
+ */
+async function opensOnHover(page: Page, loc: Locator) {
+  await page.mouse.move(0, 0).catch(() => {});
+  await page.waitForTimeout(400);
+  const before = await pageFingerprint(page);
+  await loc.hover({ timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(700);
+  const after = await pageFingerprint(page);
+  return Boolean(before && after && before !== after);
+}
 
 /** If something else sits on top of the element's centre (banner, overlay), describe it. */
 const coveredBy = (loc: Locator) =>
@@ -177,6 +200,7 @@ export async function robustClick(page: Page, el: Element): Promise<{ note: stri
   const after = await pageFingerprint(page);
   const unchanged = before && after && before === after;
   if (cover) return { note: `The control was covered by another element ${cover}; a visitor clicking it would hit that instead.${unchanged ? " Clicking it directly also changed nothing." : ""}` };
+  if (unchanged && (await opensOnHover(page, loc))) return { note: "This control opens on hover rather than click; hovering it showed its content (now open)." };
   if (unchanged) return { note: "Clicked, but nothing on the page visibly changed." };
   return { note: null };
 }
@@ -398,6 +422,12 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
             if (!el) throw new Error("No element selected");
             const { note } = await robustClick(page, el);
             if (note) result = note;
+            break;
+          }
+          case "hover": {
+            const locator = await locate();
+            await locator.hover({ timeout: 4000 });
+            await page.waitForTimeout(600);
             break;
           }
           case "type": {

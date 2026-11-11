@@ -56,8 +56,8 @@ export function desktopUnlessAsked(personas: Persona[], testGoal?: string): Pers
 export const AgentStepSchema = z.object({
   observation: z.string().describe("What you see on the current page that matters for your goal (1-2 sentences)"),
   reasoning: z.string().describe("Why you are taking the next action, in your persona's voice (1-2 sentences)"),
-  action: z.enum(["click", "type", "select", "scroll_down", "scroll_up", "go_back", "navigate", "finish", "give_up"]),
-  element_ref: z.number().nullable().describe("The [ref] number of the element for click/type/select, else null"),
+  action: z.enum(["click", "hover", "type", "select", "scroll_down", "scroll_up", "go_back", "navigate", "finish", "give_up"]),
+  element_ref: z.number().nullable().describe("The [ref] number of the element for click/hover/type/select, else null"),
   value: z.string().nullable().describe("Text to type, option to select, or same-site URL for navigate; else null"),
   progress_note: z.string().describe("Short present-tense status, e.g. 'Looking for the pricing page'"),
   final_report: z

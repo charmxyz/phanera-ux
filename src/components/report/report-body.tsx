@@ -130,6 +130,16 @@ function toTickets(
   return findings.map((f) => {
     const evidence = (f.evidence as Ticket["evidence"] | null) ?? [];
     let shot: Ticket["shot"] = null;
+    let reproduce: string[] | undefined;
+    for (const ev of evidence) {
+      if (ev.step == null || reproduce) continue;
+      const sess = sessions.find((s) => {
+        const name = personaById.get(s.persona_id)?.name;
+        return name && ev.persona.startsWith(name);
+      });
+      const steps = sess ? reproductionSteps(eventsBySession.get(sess.id) ?? [], ev.step, ev.note) : null;
+      if (steps) reproduce = steps;
+    }
     for (const ev of evidence) {
       if (ev.step == null || shot) continue;
       const sess = sessions.find((s) => {
@@ -141,7 +151,50 @@ function toTickets(
     }
     return {
       id: f.id, severity: f.severity, title: f.title, description: f.description, category: f.category, confidence: f.confidence,
-      personas: f.impacted_personas, pageUrl: f.page_url, recommendation: f.recommendation, evidence, shot,
+      personas: f.impacted_personas, pageUrl: f.page_url, recommendation: f.recommendation, evidence, shot, reproduce,
     };
   });
+}
+
+/**
+ * Steps to reproduce a finding: open the page the persona was on, repeat the actions it took
+ * there (up to the evidence step), then what it saw. Earlier wandering around the site is left out.
+ */
+function reproductionSteps(events: SessionEventRow[], step: number, observed: string): string[] | null {
+  const byStep = new Map(events.map((e) => [e.step, e]));
+  const target = byStep.get(step);
+  if (!target || step < 1) return null;
+  const pageOf = (n: number) => byStep.get(n - 1)?.url ?? null; // the page an action started on
+  const page = pageOf(step);
+  if (!page) return null;
+  // Carry back the scrolls and hovers that set up the action on the same page; earlier clicks
+  // there are usually unrelated, so they stop the walk.
+  let first = step;
+  while (first > 1 && step - first < 3 && pageOf(first - 1) === page && ["scroll_down", "scroll_up", "hover"].includes(byStep.get(first - 1)?.action ?? "")) first--;
+  const actions: string[] = [];
+  for (let n = first; n <= step; n++) {
+    const e = byStep.get(n);
+    const line = e && describeAction(e);
+    if (line) actions.push(line);
+  }
+  if (!actions.length) return null;
+  return [`Go to ${page}`, ...actions, `Observed: ${observed}`];
+}
+
+function describeAction(e: SessionEventRow): string | null {
+  const label = e.target?.match(/"(.*)"$/)?.[1] ?? e.target ?? "";
+  const kind = e.target?.match(/^(\w+) "/)?.[1];
+  const thing = kind === "a" ? "link" : kind === "button" ? "button" : kind === "input" || kind === "textarea" ? "field" : "";
+  const named = label ? (thing ? `the "${label}" ${thing}` : `"${label}"`) : "the element";
+  switch (e.action) {
+    case "click": return `Click ${named}`;
+    case "hover": return `Hover over ${named}`;
+    case "type": return `Type into ${named}`;
+    case "select": return `Choose an option in ${named}`;
+    case "scroll_down": return "Scroll down";
+    case "scroll_up": return "Scroll up";
+    case "go_back": return "Go back";
+    case "navigate": return `Go to ${e.target ?? e.url}`;
+    default: return null;
+  }
 }

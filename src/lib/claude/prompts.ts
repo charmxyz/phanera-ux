@@ -8,7 +8,8 @@ import "server-only";
 /** Shared rule: our browser automation failing is never, by itself, a website defect. */
 const AUTOMATION_RULE = [
   "Browser automation errors are NOT website problems: timeouts, 'element not found', intercepted or forced clicks, and anything marked 'Agent tooling:' are limitations of the test harness.",
-  "Only treat an interaction as a website bug when the evidence shows the website failing: an error page, a broken link or 404, visible broken layout, or a click that succeeded but where 'nothing on the page visibly changed' for something that clearly should do something.",
+  "Only treat an interaction as a website bug when the evidence shows the website failing: an error page, a broken link or 404, or visibly broken layout.",
+  "'Nothing on the page visibly changed' after a click is NOT enough evidence on its own: the agent cannot see hover effects and can miss animations, so hover menus, dropdowns, carousels and accordions often look unchanged to it. Controls noted as opening on hover are working. Report a control as broken only if the content behind it was also unreachable another way (its links and text were missing from the page).",
 ].join("\n");
 
 /** The model's sense of "now" is its training cutoff, so recent dates on a site look like the future. */
@@ -149,6 +150,7 @@ export const browserAgentPrompt = {
             "Choose exactly ONE next action. Reference elements by their [ref] number.",
             `You have at most ${input.maxActions} actions. Finish as soon as you can answer the task with evidence, or give up if you are genuinely stuck — that is a valid, useful result.`,
           ]),
+      "Some menus and dropdowns open on hover, not on click: if clicking one shows nothing, use the hover action on it, then pick the item you want.",
       "",
       "Safety rules (non-negotiable):",
       `- Stay on ${input.allowedDomain} and its subdomains.`,

@@ -1,4 +1,4 @@
-// One-time: creates the "Phanera Startup" product and a £99/month plan in PayPal,
+// One-time: creates the "Phanera Startup" product and a £25/month plan in PayPal,
 // then prints the PAYPAL_PLAN_ID to add to your environment.
 //   node --env-file=.env.local scripts/paypal-setup.mjs
 // Uses PAYPAL_ENV=live for real payments; otherwise the sandbox.
@@ -37,7 +37,7 @@ const plan = await post("/v1/billing/plans", {
     tenure_type: "REGULAR",
     sequence: 1,
     total_cycles: 0,
-    pricing_scheme: { fixed_price: { value: "99.00", currency_code: "GBP" } },
+    pricing_scheme: { fixed_price: { value: "25.00", currency_code: "GBP" } },
   }],
   payment_preferences: { auto_bill_outstanding: true, payment_failure_threshold: 3 },
 });

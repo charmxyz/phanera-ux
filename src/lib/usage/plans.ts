@@ -55,4 +55,4 @@ export function effectivePlan(p: BillingProfile | null | undefined): PlanId {
 export const BILLING_COLUMNS = "plan, billing_provider, current_period_end, cancel_at_period_end";
 
 /** Display price. The amount actually charged is set on the Stripe Price / PayPal plan. */
-export const STARTUP_PRICE = { label: "£99", amount: "99.00", currency: "GBP" } as const;
+export const STARTUP_PRICE = { label: "£25", amount: "25.00", currency: "GBP" } as const;

@@ -376,7 +376,7 @@ Migrations in [supabase/migrations](../supabase/migrations), applied in filename
 
 ### Plans ([src/lib/usage/plans.ts](../src/lib/usage/plans.ts))
 
-| Limit | Free | Startup (£99/month) |
+| Limit | Free | Startup (£25/month) |
 |---|---|---|
 | Test runs | 5 lifetime | 10 per calendar month |
 | Personas per test | 3 | 10 |
@@ -402,7 +402,7 @@ Migrations in [supabase/migrations](../supabase/migrations), applied in filename
 - **Return:** `/dashboard/billing/paypal?subscription_id=…` re-reads the subscription, checks `custom_id` matches the user, and syncs it.
 - **Webhook** `/api/paypal/webhook`: verified with PayPal's `verify-webhook-signature` API using `PAYPAL_WEBHOOK_ID`. Subscription events and renewal payments (`PAYMENT.SALE.*`, via `billing_agreement_id`) trigger a fresh re-read and sync.
 - **Cancel** happens in Settings (PayPal has no hosted portal); access lasts until the paid period ends.
-- `scripts/paypal-setup.mjs` creates the product and £99/month plan and prints the plan ID.
+- `scripts/paypal-setup.mjs` creates the product and £25/month plan and prints the plan ID.
 
 ### Provider-neutral sync ([src/lib/billing/sync.ts](../src/lib/billing/sync.ts))
 

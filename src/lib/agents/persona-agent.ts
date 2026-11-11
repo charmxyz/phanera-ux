@@ -39,7 +39,8 @@ export type RecordedStep = {
 };
 
 export type AgentRunResult = {
-  ending: "finished" | "gave_up" | "action_limit" | "time_limit" | "stopped" | "error";
+  /** "interrupted": the worker died mid-session; the run was rebuilt from its recorded steps. */
+  ending: "finished" | "gave_up" | "action_limit" | "time_limit" | "stopped" | "interrupted" | "error";
   finalReport: string | null;
   steps: RecordedStep[];
   durationMs: number;

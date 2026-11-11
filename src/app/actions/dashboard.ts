@@ -13,7 +13,7 @@ import { extraPersonaPrompt, personaPrompt } from "@/lib/claude/prompts";
 import { PersonaSchema, PersonaSuggestionsSchema, desktopUnlessAsked, type Persona } from "@/lib/claude/schemas";
 import type { Json } from "@/types/database";
 import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
-import { EXPLORE_BUDGET_MULTIPLIER, EXPLORE_GOAL, EXPLORE_TITLE, TEST_CREDITS } from "@/lib/tests/mode";
+import { EXPLORE_GOAL, EXPLORE_TITLE, personaBudget, TEST_CREDITS } from "@/lib/tests/mode";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -136,7 +136,6 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
     const goal = parsed.data.mode === "goal" ? parsed.data.goal : EXPLORE_GOAL;
     const title = mode === "explore" ? EXPLORE_TITLE : goal.length > 80 ? `${goal.slice(0, 77)}…` : goal;
     const credits = TEST_CREDITS[mode];
-    const budget = mode === "explore" ? EXPLORE_BUDGET_MULTIPLIER : 1;
 
     const db = createAdminClient();
     const { data: website } = await db.from("websites").select("*").eq("id", websiteId).single();
@@ -181,8 +180,8 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
           plan: usage.plan,
           mode,
           credits,
-          maxActionsPerPersona: usage.limits.maxActionsPerPersona * budget,
-          maxDurationMsPerPersona: usage.limits.maxDurationMsPerPersona * budget,
+          maxActionsPerPersona: personaBudget(mode, usage.limits).maxActions,
+          maxDurationMsPerPersona: personaBudget(mode, usage.limits).maxDurationMs,
         },
       })
       .select("id")
@@ -242,10 +241,11 @@ export async function stopTest(testId: string): Promise<Result<{ state: "stoppin
       await db.from("tests").update({ cancel_requested_at: new Date().toISOString() }).eq("id", testId);
       return { ok: true, state: "stopping" };
     }
-    if (Date.now() - new Date(test.cancel_requested_at).getTime() >= STOP_GRACE_MS) {
-      await forceStopTest(testId, user.id);
+    if (Date.now() - new Date(test.cancel_requested_at).getTime() >= STOP_GRACE_MS && test.status !== "evaluating") {
+      const state = await forceStopTest(testId, user.id);
       revalidatePath(`/dashboard/tests/${testId}`);
-      return { ok: true, state: "stopped" };
+      // With steps recorded, a worker is now writing the report from them.
+      return { ok: true, state: state === "reporting" ? "stopping" : "stopped" };
     }
     return { ok: true, state: "stopping" };
   } catch (e) {

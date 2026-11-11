@@ -218,7 +218,7 @@ const TIERS = [
   },
   {
     name: "Startup", price: "£99", period: "/month", cta: "Upgrade", href: "/dashboard/settings#billing", available: true, highlight: true,
-    features: ["10 usability tests every month", "Up to 10 AI personas per test", "50 pages per website analysis", "Longer sessions: 20 actions, 8 minutes per persona", "Screenshots of every step", "Pay by card or PayPal"],
+    features: ["10 usability tests every month", "Up to 10 AI personas per test", "50 pages per website analysis", "Longer sessions: 30 actions, 10 minutes per persona", "Screenshots of every step", "Pay by card or PayPal"],
   },
   {
     name: "Enterprise", price: "Custom", period: "", cta: "Contact us", href: "mailto:phaneracom@gmail.com", available: true,

@@ -89,13 +89,13 @@ export default async function TestPage({ params }: PageProps<"/dashboard/tests/[
             <CardTitle>{doneCount} of {sessions.length} personas completed</CardTitle>
             <CardDescription>
               {test.cancel_requested_at
-                ? "Stopping… unfinished personas are being stopped, and a report is written from the ones that finished."
+                ? "Stopping… unfinished personas are being stopped, and the report is written from every step they recorded."
                 : test.status === "evaluating"
                   ? "All sessions recorded. Generating research insights…"
                   : "Agents are exploring the website in isolated browsers. Statuses update live."}
             </CardDescription>
             <CardAction>
-              <StopTestButton testId={test.id} requestedAt={test.cancel_requested_at} graceMs={STOP_GRACE_MS} />
+              <StopTestButton testId={test.id} requestedAt={test.cancel_requested_at} graceMs={STOP_GRACE_MS} status={test.status} />
             </CardAction>
           </CardHeader>
           <CardContent className="grid gap-3">

@@ -7,7 +7,7 @@ import type { AgentRunResult } from "@/lib/agents/persona-agent";
 import type { TestMode } from "@/lib/tests/mode";
 
 /** Picks up to `n` evenly spaced screenshots, always including the last one. */
-function sampleScreens(shots: AgentRunResult["screenshots"], n = 4) {
+export function sampleScreens<T>(shots: T[], n = 4): T[] {
   if (shots.length <= n) return shots;
   const idx = new Set<number>([shots.length - 1]);
   for (let k = 0; idx.size < n; k++) idx.add(Math.floor((k * (shots.length - 1)) / (n - 1)));

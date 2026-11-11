@@ -15,7 +15,7 @@ import { AntAvatar } from "@/components/ants/pixel-ant";
 import { PersonaEditor } from "@/components/personas/persona-editor";
 import { createTest, generateExtraPersona, regeneratePersonas } from "@/app/actions/dashboard";
 import type { Persona } from "@/lib/claude/schemas";
-import { EXPLORE_BUDGET_MULTIPLIER, TEST_CREDITS, type TestMode } from "@/lib/tests/mode";
+import { EXPLORE_MAX_ACTIONS, TEST_CREDITS, type TestMode } from "@/lib/tests/mode";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -96,7 +96,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
             badge="Recommended"
             disabled={usage.remaining < TEST_CREDITS.explore}
           >
-            Agents roam the site freely and hunt for broken links, errors, dead ends and confusing content. Uses more compute: {EXPLORE_BUDGET_MULTIPLIER}× the actions and time per persona.
+            Agents roam the site freely and hunt for broken links, errors, dead ends and confusing content. Each persona uses all of its {Math.min(limits.maxActionsPerPersona, EXPLORE_MAX_ACTIONS)} actions, so it costs more credits.
           </ModeOption>
           <ModeOption
             checked={!exploring}
@@ -210,7 +210,7 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
           <Row label="Goal">{exploring ? "Let agent explore" : goal || <span className="text-muted-foreground">Not set</span>}</Row>
           <Row label="Personas">{selected.length} selected</Row>
           <Row label="Limits per persona">
-            {limits.maxActionsPerPersona * (exploring ? EXPLORE_BUDGET_MULTIPLIER : 1)} actions · {limits.maxDurationMin * (exploring ? EXPLORE_BUDGET_MULTIPLIER : 1)} min
+            {exploring ? Math.min(limits.maxActionsPerPersona, EXPLORE_MAX_ACTIONS) : limits.maxActionsPerPersona} actions · {limits.maxDurationMin} min
           </Row>
           <Row label="Pages per website analysis">{limits.pagesPerScan}</Row>
           <Row label="Usage">

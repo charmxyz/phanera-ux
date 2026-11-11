@@ -9,9 +9,10 @@
 // one worker ever wins it.
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runDiscovery } from "@/lib/discovery/run";
-import { runTest } from "@/lib/agents/run-test";
+import { runTest, withHeartbeat } from "@/lib/agents/run-test";
+import { finishFromRecordedSteps } from "@/lib/agents/salvage";
 import { refundTestRun } from "@/lib/usage/usage";
-import { forceStopTest, recoverOrphanedTest, STOP_GRACE_MS } from "@/lib/agents/stop";
+import { failInterruptedTest, forceStopTest, MAX_SALVAGE_ATTEMPTS, STOP_GRACE_MS } from "@/lib/agents/stop";
 import os from "node:os";
 import type { DiscoveryStatus } from "@/types/database";
 
@@ -80,20 +81,39 @@ async function failStaleJobs() {
     .select("id, user_id, attempts, cancel_requested_at, heartbeat_at, started_at")
     .in("status", ["running", "evaluating"])
     .or(`heartbeat_at.lt."${silentSince}",and(heartbeat_at.is.null,started_at.lt."${silentSince}")`);
+  // Never restart from scratch: write the report from the steps already recorded. If that
+  // salvage itself dies (it bumped `attempts`), fail and refund instead of looping.
   for (const t of orphans ?? []) {
     if (activeTests.has(t.id)) continue; // ours and alive (heartbeat write may just be slow)
-    log(`orphaned test ${t.id}: ${await recoverOrphanedTest(t)}`);
+    if (stopping) break;
+    if (t.attempts >= MAX_SALVAGE_ATTEMPTS) {
+      await failInterruptedTest(t, "The test worker stopped twice before this test finished. This run wasn't counted against your usage; please try again.");
+      log(`orphaned test ${t.id}: failed (salvage already attempted)`);
+      continue;
+    }
+    // Claim it so only one worker salvages it.
+    const { data: claimed } = await db
+      .from("tests")
+      .update({ status: "evaluating", attempts: t.attempts + 1, heartbeat_at: new Date().toISOString() })
+      .eq("id", t.id)
+      .eq("attempts", t.attempts)
+      .in("status", ["running", "evaluating"])
+      .select("id");
+    if (!claimed?.length) continue;
+    log(`orphaned test ${t.id}: writing the report from its recorded steps`);
+    activeTests.add(t.id);
+    launch("tests", t.id, () => withHeartbeat(t.id, () => finishFromRecordedSteps(t.id)).finally(() => activeTests.delete(t.id)));
   }
 
   // Stop requests the running job never picked up (e.g. it was stuck) are applied here.
+  // (A force-stopped test with recorded steps moves to "evaluating" for its report.)
   const { data: stuck } = await db
     .from("tests")
     .select("id, user_id")
-    .in("status", ["queued", "running", "evaluating"])
+    .in("status", ["queued", "running"])
     .lt("cancel_requested_at", new Date(now - 2 * STOP_GRACE_MS).toISOString());
   for (const t of stuck ?? []) {
-    await forceStopTest(t.id, t.user_id);
-    log("force-stopped test", t.id);
+    log(`force-stopped test ${t.id}: ${await forceStopTest(t.id, t.user_id)}`);
   }
   const { data: sites } = await db
     .from("websites")
@@ -157,11 +177,13 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
     log(`${sig}: no new jobs; waiting for ${running.tests + running.discoveries} running job(s)`);
     const deadline = Date.now() + 20_000;
     while (running.tests + running.discoveries > 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 500));
-    // Tests still running can't finish here: hand them straight back to the queue so the
-    // next worker restarts them now, instead of after the 2-minute orphan timeout.
+    // Tests still running can't finish here. Mark them silent now, so the next worker's first
+    // sweep writes their reports from the recorded steps instead of waiting 2 minutes.
     for (const id of activeTests) {
-      const { data: t } = await db.from("tests").select("id, user_id, attempts, cancel_requested_at").eq("id", id).single();
-      if (t) log(`handing back test ${id}: ${await recoverOrphanedTest(t, false).catch((e) => `failed (${e instanceof Error ? e.message : e})`)}`);
+      await db.from("tests").update({ heartbeat_at: new Date(0).toISOString() }).eq("id", id).in("status", ["running", "evaluating"]).then(
+        () => log(`handed back test ${id} for a report from its recorded steps`),
+        (e) => log(`handing back test ${id} failed: ${e instanceof Error ? e.message : e}`),
+      );
     }
     process.exit(0);
   });

@@ -7,8 +7,8 @@ import { PersonaSchema, type Persona, type SessionEvaluation } from "@/lib/claud
 import { BILLING_COLUMNS, effectivePlan, planLimits } from "@/lib/usage/plans";
 import { refundTestRun } from "@/lib/usage/usage";
 import { STOPPED_SESSION_MSG } from "./stop";
-import { EXPLORE_BUDGET_MULTIPLIER, testModeOf } from "@/lib/tests/mode";
-import type { Json, Outcome, TestRow } from "@/types/database";
+import { personaBudget, testModeOf } from "@/lib/tests/mode";
+import type { Json, Outcome, TestRow, WebsiteRow } from "@/types/database";
 
 // Personas run in parallel inside one browser; lower this on small machines (~500 MB each).
 const MAX_CONCURRENT_PERSONAS = Math.max(1, Math.min(10, Number(process.env.PERSONA_CONCURRENCY) || 3));
@@ -16,18 +16,23 @@ const MAX_CONCURRENT_PERSONAS = Math.max(1, Math.min(10, Number(process.env.PERS
 /** How often a running test checks in; the worker sweep treats ~2 minutes of silence as a dead worker. */
 export const HEARTBEAT_MS = 15_000;
 
-/** Executes a full persona test in a background worker, never in a request. */
-export async function runTest(testId: string) {
+/** Keeps the test's heartbeat fresh while `job` runs, so the worker sweep knows it's alive. */
+export async function withHeartbeat<T>(testId: string, job: () => Promise<T>): Promise<T> {
   const db = createAdminClient();
-  // Heartbeat for the whole run, including the (slow) report-writing phase.
   const beat = setInterval(() => {
     void db.from("tests").update({ heartbeat_at: new Date().toISOString() }).eq("id", testId).then(() => {}, () => {});
   }, HEARTBEAT_MS);
   try {
-    await runTestInner(testId);
+    return await job();
   } finally {
     clearInterval(beat);
   }
+}
+
+/** Executes a full persona test in a background worker, never in a request. */
+export function runTest(testId: string) {
+  // Heartbeat for the whole run, including the (slow) report-writing phase.
+  return withHeartbeat(testId, () => runTestInner(testId));
 }
 
 async function runTestInner(testId: string) {
@@ -46,10 +51,7 @@ async function runTestInner(testId: string) {
   const limits = planLimits(effectivePlan(profile));
   const cfg = (test.configuration ?? {}) as { startUrl?: string };
   const mode = testModeOf(test.configuration);
-  // Exploring has no finish line, so each persona gets a bigger budget (and the test costs more credits).
-  const budget = mode === "explore" ? EXPLORE_BUDGET_MULTIPLIER : 1;
-  const maxActions = limits.maxActionsPerPersona * budget;
-  const maxDurationMs = limits.maxDurationMsPerPersona * budget;
+  const { maxActions, maxDurationMs } = personaBudget(mode, limits);
 
   await db.from("tests").update({ status: "running", started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString(), error: null }).eq("id", testId);
 
@@ -107,7 +109,9 @@ async function runTestInner(testId: string) {
               timer = setTimeout(() => reject(new Error("The persona's browser stopped responding.")), watchdogMs);
             }),
           ]).finally(() => clearTimeout(timer));
-          if (stopped() || run.ending === "stopped") {
+          // A persona stopped before doing anything has nothing to judge. One stopped mid-way
+          // is still evaluated on the steps it recorded, so the report keeps that evidence.
+          if ((stopped() || run.ending === "stopped") && !run.steps.some((s) => s.step > 0)) {
             await db
               .from("sessions")
               .update({ status: "failed", error: STOPPED_SESSION_MSG, current_activity: null, duration_ms: run.durationMs, completed_at: new Date().toISOString() })
@@ -159,17 +163,36 @@ async function runTestInner(testId: string) {
     await handle?.release();
   }
 
-  const usable = results.filter((r) => r.run && r.evaluation);
+  const usable = results.filter((r): r is UsableSession => Boolean(r.run && r.evaluation));
   if (usable.length === 0) {
     const error = stopped()
-      ? "Stopped before any persona finished. This run wasn't counted against your usage."
+      ? "Stopped before any persona took an action. This run wasn't counted against your usage."
       : "No persona session completed successfully.";
     await setTest({ status: "failed", error, completed_at: new Date().toISOString() });
     await refundTestRun(test.user_id, testId);
     return;
   }
+  // If stopped, the report is still written from everything the personas recorded.
+  await writeReport({
+    test,
+    website,
+    usable,
+    total: results.length,
+    note: stopped() ? "Stopped early. This report covers the steps recorded before the stop." : null,
+  });
+}
 
-  // If stopped, the report is still written from the personas that finished.
+export type UsableSession = { persona: Persona; personaName: string; run: AgentRunResult; evaluation: SessionEvaluation };
+
+/** Synthesises findings from evaluated sessions and completes the test. */
+export async function writeReport(input: { test: TestRow; website: WebsiteRow; usable: UsableSession[]; total: number; note: string | null }) {
+  const { test, website, usable, total, note } = input;
+  const db = createAdminClient();
+  const testId = test.id;
+  const setTest = (fields: Partial<TestRow>) =>
+    db.from("tests").update(fields).eq("id", testId).in("status", ["running", "evaluating"]);
+  const mode = testModeOf(test.configuration);
+
   await setTest({ status: "evaluating" });
   const measured = (website.readiness as { measured?: unknown } | null)?.measured ?? null;
 
@@ -179,7 +202,7 @@ async function runTestInner(testId: string) {
       mode,
       websiteSummary: website.summary,
       measuredReadiness: measured,
-      sessions: usable.map((r) => ({ persona: r.persona, ending: r.run!.ending, evaluation: r.evaluation, steps: r.run!.steps })),
+      sessions: usable.map((r) => ({ persona: r.persona, ending: r.run.ending, evaluation: r.evaluation, steps: r.run.steps })),
     });
 
     if (report.findings.length) {
@@ -201,25 +224,25 @@ async function runTestInner(testId: string) {
       );
     }
 
-    const outcomes = usable.map((r) => r.evaluation!.outcome);
+    const outcomes = usable.map((r) => r.evaluation.outcome);
     const count = (o: string) => outcomes.filter((x) => x === o).length;
     await setTest({
-        status: usable.length < results.length ? "partial" : "complete",
-        completed_at: new Date().toISOString(),
-        summary: {
-          conclusion: report.conclusion,
-          top_fixes: report.top_fixes,
-          readiness: report.readiness_interpretation,
-          counts: {
-            personas: results.length,
-            success: count("success"),
-            partial: count("partial_success"),
-            failed: count("failed") + count("blocked") + count("abandoned"),
-            inconclusive: count("inconclusive") + (results.length - usable.length),
-          },
-        } as unknown as Json,
-        ...(stopped() ? { error: "Stopped early. This report covers the personas that finished." } : {}),
-      });
+      status: usable.length < total ? "partial" : "complete",
+      completed_at: new Date().toISOString(),
+      summary: {
+        conclusion: report.conclusion,
+        top_fixes: report.top_fixes,
+        readiness: report.readiness_interpretation,
+        counts: {
+          personas: total,
+          success: count("success"),
+          partial: count("partial_success"),
+          failed: count("failed") + count("blocked") + count("abandoned"),
+          inconclusive: count("inconclusive") + (total - usable.length),
+        },
+      } as unknown as Json,
+      error: note,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Findings generation failed";
     await setTest({ status: "partial", error: `Sessions recorded, but the report could not be generated: ${msg}`, completed_at: new Date().toISOString() });

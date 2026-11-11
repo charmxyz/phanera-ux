@@ -300,17 +300,17 @@ Run with `pnpm worker` (`tsx --conditions=react-server scripts/worker.ts`); in p
 
 - **Polling and claiming.** Every `WORKER_POLL_MS` (default 3 s) it looks for queued discovery scans and tests and claims each with a conditional update (`… where status = 'queued'`), so several worker replicas never run the same job. Concurrency caps: `WORKER_MAX_TESTS` (image default 2) and `WORKER_MAX_DISCOVERIES` (default 2).
 - **Health log** every minute: running tests, Node RSS, and system free/total memory.
-- **Orphan recovery.** A `running`/`evaluating` test whose heartbeat is older than 2 minutes lost its worker (crash, out of memory, redeploy). The first time, it is reset (events and findings deleted, sessions re-queued) and queued again, and `attempts` increments. A second orphaning fails it and refunds usage (`recoverOrphanedTest`, max 2 attempts).
+- **Orphan recovery.** A `running`/`evaluating` test whose heartbeat is older than 2 minutes lost its worker (crash, out of memory, redeploy). It is never restarted from scratch: a worker claims it (`attempts` + 1) and runs `finishFromRecordedSteps` ([src/lib/agents/salvage.ts](../src/lib/agents/salvage.ts)), which evaluates every persona that recorded at least one action and writes the report from those steps. If that salvage dies too, the test is failed and refunded (`failInterruptedTest`).
 - **Stop requests the job never picked up** (older than 2 minutes) are force-stopped.
 - **Hard ceilings:** tests running over 75 minutes and discoveries over 15 minutes are failed (tests refunded).
-- **Graceful shutdown** (SIGTERM/SIGINT): stops claiming, waits up to 20 s, then hands any still-running tests straight back to the queue *without* using up a retry, so a redeploy restarts them immediately.
+- **Graceful shutdown** (SIGTERM/SIGINT): stops claiming, waits up to 20 s, then marks still-running tests' heartbeat as silent so the next worker's first sweep writes their reports from the recorded steps.
 
 ### Stopping a test
 
 `stopTest` server action and the **Stop test** button:
 - **Queued test:** stopped outright and refunded.
-- **Running test:** sets `cancel_requested_at`. The worker notices within about 3 s, stops the remaining personas and still writes a report from the ones that finished (or fails and refunds if none finished).
-- **Unresponsive worker:** after 60 s the button becomes **Force stop**, which marks unfinished sessions stopped directly (`forceStopTest`).
+- **Running test:** sets `cancel_requested_at`. The worker notices within about 3 s, stops the remaining personas, evaluates every persona on the steps it recorded (even if cut short) and writes the report. If no persona took an action, it fails and refunds.
+- **Unresponsive worker:** after 60 s the button becomes **Force stop** (`forceStopTest`): unfinished sessions are marked stopped but their steps are kept, and the test moves to `evaluating` so a worker writes the report from them. With nothing recorded it fails and refunds.
 
 ---
 
@@ -381,8 +381,8 @@ Migrations in [supabase/migrations](../supabase/migrations), applied in filename
 | Test runs | 5 lifetime | 10 per calendar month |
 | Personas per test | 3 | 10 |
 | Pages per discovery scan | 10 | 50 |
-| Actions per persona | 8 | 20 |
-| Time per persona | 3 min | 8 min |
+| Actions per persona | 8 | 30 (20 when exploring) |
+| Time per persona | 3 min | 10 min |
 | Screenshots | Key steps | Every step |
 | Discovery scans per day | 10 | 40 |
 

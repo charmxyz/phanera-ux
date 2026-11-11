@@ -30,7 +30,7 @@ export default async function PromoSlide({ params }: { params: Promise<{ slide: 
                   website={{ id: "w", url: `https://${DOMAIN}`, domain: DOMAIN, name: "Acme", description: "Product analytics for growing teams.", type: "B2B SaaS", pageCount: 12 }}
                   suggestedGoals={[TASK]}
                   suggestedPersonas={PERSONAS}
-                  limits={{ personasPerTest: 10, pagesPerScan: 50, maxActionsPerPersona: 20, maxDurationMin: 8, planLabel: "Startup" }}
+                  limits={{ personasPerTest: 10, pagesPerScan: 50, maxActionsPerPersona: 30, maxDurationMin: 10, planLabel: "Startup" }}
                   usage={{ remaining: 7, allowance: 10, period: "month" }}
                 />
               </div>

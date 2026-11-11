@@ -67,7 +67,7 @@ export default function Page() {
           <li><strong>Vercel:</strong> hosting for the website and app.</li>
           <li><strong>Railway:</strong> hosting for the background worker that runs browser sessions.</li>
           <li><strong>Anthropic:</strong> AI models that power personas, analysis and reports. Page content, tasks and screenshots are sent to Anthropic to generate results.</li>
-          <li><strong>Trigger.dev and Daytona:</strong> background job and sandboxed browser infrastructure.</li>
+          <li><strong>Railway and Daytona:</strong> background job and sandboxed browser infrastructure.</li>
           <li><strong>PayPal and Stripe:</strong> payment processing.</li>
         </ul>
         <p>

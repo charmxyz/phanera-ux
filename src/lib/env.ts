@@ -33,7 +33,6 @@ export const env = {
     optional("ANTHROPIC_AGENT_MODEL") ?? optional("ANTHROPIC_MODEL") ?? "claude-opus-5-5",
   daytonaApiKey: () => optional("DAYTONA_API_KEY"),
   daytonaApiUrl: () => optional("DAYTONA_API_URL"),
-  triggerSecretKey: () => optional("TRIGGER_SECRET_KEY"),
   stripeSecretKey: () => optional("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: () => optional("STRIPE_WEBHOOK_SECRET"),
   stripePriceId: () => optional("STRIPE_PRICE_ID"),

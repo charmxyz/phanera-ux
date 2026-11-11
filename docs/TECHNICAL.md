@@ -59,7 +59,7 @@ This README is the technical reference: architecture, data model, every pipeline
 | Transactional email | Resend, as Supabase Auth's custom SMTP provider |
 | AI | Anthropic Claude via `@anthropic-ai/sdk` (structured outputs with Zod) |
 | Browser automation | `playwright-core` 1.64 driving Chromium |
-| Background jobs | Standalone Node worker (Railway, Docker) polling Postgres; optional Trigger.dev; in-process fallback in dev |
+| Background jobs | Standalone Node worker on Railway (Docker) polling Postgres; in-process fallback in dev |
 | Billing | Stripe (Checkout, Billing Portal, webhooks) and PayPal Subscriptions (REST API, webhooks) |
 | Validation | Zod 4 |
 | Package manager | pnpm |
@@ -119,7 +119,6 @@ Key design decisions:
 .
 ├── Dockerfile.worker            # Worker image (Playwright base image + pnpm)
 ├── railway.json                 # Railway: build Dockerfile.worker, restart always
-├── trigger.config.ts            # Optional Trigger.dev config (Playwright build extension)
 ├── scripts/
 │   ├── worker.ts                # Job worker: poll, claim, run, heartbeat recovery, sweeps
 │   ├── paypal-setup.mjs         # One-time: create PayPal product + monthly plan
@@ -155,7 +154,7 @@ Key design decisions:
     │   ├── evaluation/          # session evaluation + findings synthesis
     │   ├── claude/              # client, prompts, Zod schemas
     │   ├── daytona/browser.ts   # Browser acquisition + reachability probe
-    │   ├── jobs/dispatch.ts     # Where queued jobs run (worker / Trigger / in-process)
+    │   ├── jobs/dispatch.ts     # Where queued jobs run (Railway worker / in-process in dev)
     │   ├── billing/             # Stripe, PayPal, provider-neutral sync
     │   ├── usage/               # Plan limits, effective plan, usage accounting
     │   ├── share/               # Shared-report loader
@@ -164,7 +163,6 @@ Key design decisions:
     │   ├── validation/          # URL normalisation, SSRF-safe fetch
     │   ├── dashboard/           # Request-scoped queries, formatters
     │   └── env.ts               # Server-only environment access
-    ├── trigger/tasks.ts         # Trigger.dev task definitions (optional runner)
     └── types/database.ts        # Hand-written DB row types
 ```
 
@@ -291,11 +289,10 @@ Rules enforced in the prompts:
 
 ### Choosing a runner ([src/lib/jobs/dispatch.ts](../src/lib/jobs/dispatch.ts))
 
-| `JOB_RUNNER` | Behaviour |
+| Environment | Behaviour |
 |---|---|
-| `worker` | The web app only leaves jobs `queued`; the standalone worker picks them up. **Production setting.** |
-| `trigger` (or `TRIGGER_SECRET_KEY` set) | Jobs are triggered as Trigger.dev tasks ([src/trigger/tasks.ts](../src/trigger/tasks.ts): `website-discovery`, `persona-test-run` on a `medium-1x` machine). |
-| unset | Development only: the job runs in-process with Next's `after()`. |
+| Production, or `JOB_RUNNER=worker` | The web app only leaves jobs `queued`; the Railway worker picks them up. |
+| Development (default) | The job runs in-process with Next's `after()`. |
 
 ### The worker ([scripts/worker.ts](../scripts/worker.ts))
 
@@ -323,8 +320,7 @@ Run with `pnpm worker` (`tsx --conditions=react-server scripts/worker.ts`); in p
 
 1. `BROWSER_PROVIDER=local`: local headless Chromium (used by the worker image; launched with `--disable-dev-shm-usage`).
 2. `BROWSER_PROVIDER=daytona`, or a Daytona API key present: a Daytona sandbox running Chromium, connected over CDP.
-3. Inside a deployed Trigger.dev run: local Chromium installed by the Playwright build extension.
-4. Development with `ALLOW_LOCAL_BROWSER=true`: local Chromium (never in production).
+3. Development with `ALLOW_LOCAL_BROWSER=true`: local Chromium (never in production).
 
 `assertBrowserCanReach` probes the target and a control site and recognises Chrome error pages and egress-restricted sandboxes, so infrastructure failures are reported (and refunded) rather than blamed on the website.
 
@@ -488,14 +484,13 @@ Names only. See `.env.example`; real values live in `.env.local` (local), Vercel
 | `ANTHROPIC_AGENT_MODEL` | worker | Per-step browser model (defaults to the main model) |
 | `ANTHROPIC_FALLBACKS` | web, worker | `off` disables server-side fallbacks |
 | `RESEND_API_KEY` | Supabase SMTP | Email delivery (configured in Supabase, not read by the app) |
-| `JOB_RUNNER` | web | `worker` in production |
+| `JOB_RUNNER` | web (dev) | `worker` to test against a local `pnpm worker` |
 | `PERSONA_CONCURRENCY` | worker | Personas in parallel per test (1–10) |
 | `WORKER_MAX_TESTS`, `WORKER_MAX_DISCOVERIES`, `WORKER_POLL_MS` | worker | Worker concurrency and polling |
 | `BROWSER_PROVIDER` | worker | `local` or `daytona` |
 | `DAYTONA_API_KEY`, `DAYTONA_API_URL` | worker | Optional Daytona sandboxes |
 | `ALLOW_LOCAL_BROWSER` | dev | Allow local Chromium in development |
-| `PLAYWRIGHT_VERSION` | Trigger.dev | Browser version for the build extension |
-| `TRIGGER_SECRET_KEY`, `TRIGGER_PROJECT_REF` | web | Optional Trigger.dev runner |
+| `PLAYWRIGHT_VERSION` | worker | Daytona sandbox image version |
 | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | web | Card subscriptions |
 | `PAYPAL_ENV`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_PLAN_ID`, `PAYPAL_WEBHOOK_ID` | web | PayPal subscriptions |
 
@@ -525,7 +520,6 @@ If local development points at the **production** Supabase project, use `JOB_RUN
 | `pnpm lint` / `typecheck` | ESLint, `tsc --noEmit` |
 | `pnpm worker` | Job worker |
 | `pnpm smoke:discovery` / `smoke:browser` | Manual smoke tests |
-| `pnpm trigger:dev` | Optional Trigger.dev dev server |
 | `node --env-file=.env.local scripts/paypal-setup.mjs` | Create the PayPal plan |
 
 ---
@@ -553,7 +547,6 @@ The full click-by-click setup is in [SETUP.md](../SETUP.md).
   - `[agent <session> <persona>] step N … · look · decide · act` timings show whether slowness comes from the browser or the model.
 - **A test looks stuck:** with the heartbeat it is restarted automatically within about 2 minutes if its worker died. Users can also **Stop test** (and **Force stop** after 60 s).
 - **Railway variables override the Dockerfile.** If personas run one at a time, check for an old `PERSONA_CONCURRENCY=1` variable.
-- **"No matching branch env" errors** come from Trigger.dev being selected unintentionally: set `JOB_RUNNER=worker` on the web app.
 - **Refunds** happen automatically for environment failures, user stops with no finished persona, and worker crashes on the second attempt.
 
 ---

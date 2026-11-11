@@ -9,7 +9,6 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "trigger:dev": "trigger dev",
     "smoke:discovery": "tsx --conditions=react-server scripts/smoke-discovery.ts",
     "smoke:browser": "tsx --conditions=react-server scripts/smoke-browser.ts",
     "worker": "tsx --conditions=react-server scripts/worker.ts"
@@ -22,7 +21,6 @@
     "@react-three/fiber": "^9.8.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
-    "@trigger.dev/sdk": "^4.8.3",
     "@xyflow/react": "^12.12.1",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
@@ -45,7 +43,6 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
-    "@trigger.dev/build": "4.8.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -53,7 +50,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.4",
     "tailwindcss": "^4",
-    "trigger.dev": "^4.8.3",
     "tsx": "^4.23.15",
     "typescript": "^5"
   },

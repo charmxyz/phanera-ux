@@ -19,8 +19,8 @@ export class BrowserUnavailableError extends Error {}
  * Acquires an isolated browser for one test run. Resolution order:
  * - BROWSER_PROVIDER=daytona|local forces a backend.
  * - DAYTONA_API_KEY set → ephemeral Daytona sandbox running a Playwright server.
- * - Running in a deployed Trigger.dev worker → headless Chromium inside that run's
- *   own container (installed by the Playwright build extension in trigger.config.ts).
+ * - BROWSER_PROVIDER=local is set in Dockerfile.worker, so the Railway worker launches
+ *   headless Chromium from the Playwright base image.
  * - Development with ALLOW_LOCAL_BROWSER=true → local headless Chromium.
  * Each persona then gets its own BrowserContext (separate cookies/storage/navigation).
  */
@@ -31,8 +31,7 @@ export async function acquireBrowser(): Promise<BrowserHandle> {
     if (!apiKey) throw new BrowserUnavailableError("BROWSER_PROVIDER=daytona but DAYTONA_API_KEY is not set.");
     return acquireDaytonaBrowser(apiKey);
   }
-  const inTriggerWorker = Boolean(process.env.TRIGGER_DEPLOYMENT_ID);
-  if (forced === "local" || inTriggerWorker || env.allowLocalBrowser()) {
+  if (forced === "local" || env.allowLocalBrowser()) {
     const browser = await chromium.launch({
       headless: true,
       // Containers have a tiny /dev/shm; without this Chromium tabs crash under load.
@@ -41,7 +40,7 @@ export async function acquireBrowser(): Promise<BrowserHandle> {
     return { browser, kind: "local", release: () => browser.close() };
   }
   throw new BrowserUnavailableError(
-    "No browser is available. Run tests in a deployed Trigger.dev worker, set DAYTONA_API_KEY, or set ALLOW_LOCAL_BROWSER=true in development.",
+    "No browser is available. Run tests on the Railway worker (BROWSER_PROVIDER=local), set DAYTONA_API_KEY, or set ALLOW_LOCAL_BROWSER=true in development.",
   );
 }
 

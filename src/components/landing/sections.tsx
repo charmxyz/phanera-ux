@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { CheckIcon, ClipboardCheckIcon, FileSearchIcon, GlobeIcon, MousePointerClickIcon, NetworkIcon, ScanEyeIcon, ScanTextIcon, CodeXmlIcon, UsersIcon, TargetIcon, type LucideIcon } from "lucide-react";
+import { CheckIcon, ClipboardCheckIcon, FileSearchIcon, GlobeIcon, MousePointerClickIcon, NetworkIcon, ScanEyeIcon, ScanTextIcon, CodeXmlIcon, UsersIcon, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { buttonVariants } from "@/components/ui/button";
 import { AntAvatar } from "@/components/ants/pixel-ant";
 import { AntMarch } from "./ants/ant-march";
-import { VoxelBrowserView } from "./browser/voxel-browser-view";
+import { DashboardDemo } from "./demo/dashboard-demo";
+import { ReplayDemo, SessionDemo } from "./demo/session-demo";
 import { HeroFlower } from "./flower/hero-flower";
 import { ExploreForm } from "./explore-form";
 import { cn } from "@/lib/utils";
@@ -54,12 +54,6 @@ export function Hero() {
 }
 
 /* --------------------------------------------------------- How it works */
-const STEPS = [
-  { icon: TargetIcon, t: "Set a user task", d: "For example “Can a new visitor find pricing?” Add your URL and Phanera analyses your website." },
-  { icon: UsersIcon, t: "AI personas explore", d: "Each persona works through the task in its own way, clicking, scrolling and reading like a real user." },
-  { icon: ClipboardCheckIcon, t: "Get research insights", d: "Task outcomes, session replays and prioritised usability findings, ready to share." },
-];
-
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="scroll-mt-16 py-24">
@@ -67,16 +61,8 @@ export function HowItWorks() {
         <SectionHeading eyebrow="How it works" icon={MousePointerClickIcon} title="Watch how they experience your product.">
           Each persona navigates your website in a real browser, interacting with pages and attempting to complete tasks.
         </SectionHeading>
-        <VoxelBrowserView className="mx-auto aspect-[16/9] w-full max-w-5xl max-sm:aspect-[4/3]" />
-        <ol className="mx-auto mt-6 grid max-w-5xl gap-6 sm:grid-cols-3">
-          {STEPS.map((step) => (
-            <li key={step.t} className="grid gap-1.5">
-              <span className="flex size-8 items-center justify-center rounded-lg border border-border"><step.icon className="size-4" /></span>
-              <p className="font-medium">{step.t}</p>
-              <p className="text-sm text-pretty text-muted-foreground">{step.d}</p>
-            </li>
-          ))}
-        </ol>
+        <DashboardDemo />
+        <p className="mt-4 text-center text-xs text-muted-foreground">The Phanera dashboard, testing stripe.com. Illustrative demo.</p>
       </div>
     </section>
   );
@@ -125,69 +111,32 @@ export function Personas() {
 
 /* ------------------------------------------------------ Session evidence */
 export function SessionEvidence() {
-  const timeline = [
-    { t: "00:00", a: "Opened", d: "/", ok: true },
-    { t: "00:06", a: "Scrolled", d: "Hero → features", ok: true },
-    { t: "00:14", a: "Clicked", d: "“Product” menu", ok: true },
-    { t: "00:21", a: "Searched", d: "Looked for “pricing” in nav", ok: false },
-    { t: "00:33", a: "Clicked", d: "Footer → “Plans”", ok: true },
-    { t: "00:40", a: "Finished", d: "Found Startup plan price", ok: true },
-  ];
   return (
     <section className="py-24">
       <div className="container-marketing">
-        <SectionHeading eyebrow="Session replays" icon={ScanEyeIcon} title="Understand what works and what doesn&apos;t.">
+        <SectionHeading eyebrow="User journeys" icon={NetworkIcon} title="Understand what works and what doesn&apos;t.">
           Review user journeys, screenshots, task outcomes and the issues that affected each experience.
         </SectionHeading>
-        <Card className="overflow-hidden p-0">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-            <div className="flex gap-1.5">{[0, 1, 2].map((i) => <span key={i} className="size-2.5 rounded-full bg-border" />)}</div>
-            <div className="mx-auto truncate rounded-md bg-background px-3 py-1 font-mono text-xs text-muted-foreground">https://example.com/plans</div>
-            <Badge variant="outline" className="font-normal text-muted-foreground">Illustrative demo</Badge>
-          </div>
-          <div className="grid md:grid-cols-[1.4fr_1fr]">
-            <div className="border-b border-border p-4 md:border-r md:border-b-0">
-              <div className="mb-3 flex items-center gap-3">
-                <AntAvatar seed="Sam" size={32} state="done" />
-                <div className="grid">
-                  <span className="text-sm font-medium">Sam · Potential customer</span>
-                  <span className="text-xs text-muted-foreground">User task: Compare plans and find pricing</span>
-                </div>
-                <span className="ml-auto text-sm text-warning">Partially completed</span>
-              </div>
-              {/* Wireframe "screenshot" */}
-              <div className="rounded-lg border border-border bg-background p-4">
-                <div className="mb-4 flex items-center justify-between"><div className="h-2 w-16 rounded bg-border" /><div className="flex gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-2 w-10 rounded bg-border" />)}</div></div>
-                <div className="mx-auto mb-4 h-3 w-1/2 rounded bg-muted-foreground/30" />
-                <div className="grid grid-cols-3 gap-3">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className={cn("grid gap-2 rounded-md border p-3", i === 1 ? "border-primary/60" : "border-border")}>
-                      <div className="h-2 w-10 rounded bg-muted-foreground/40" />
-                      <div className="h-4 w-14 rounded bg-foreground/70" />
-                      {[0, 1, 2].map((j) => <div key={j} className="h-1.5 w-full rounded bg-border" />)}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 grid gap-1.5">
-                  <div className="h-2 w-1/3 rounded bg-muted-foreground/30" />
-                  {[0, 1, 2].map((i) => <div key={i} className="h-1.5 rounded bg-border" style={{ width: `${90 - i * 18}%` }} />)}
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground"><Progress value={75} className="h-1 flex-1" /> <span className="font-mono">6 / 8 actions</span></div>
-            </div>
-            <ol className="grid content-start gap-0 p-4">
-              {timeline.map((s, i) => (
-                <li key={i} className="relative flex gap-3 pb-4 last:pb-0">
-                  <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", s.ok ? "bg-foreground/70" : "bg-warning")} />
-                  <div className="grid gap-0.5 text-sm">
-                    <span><span className="font-mono text-xs text-muted-foreground">{s.t}</span> · {s.a}</span>
-                    <span className="text-xs text-muted-foreground">{s.d}</span>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </Card>
+        <div className="mx-auto max-w-5xl">
+          <SessionDemo />
+          <p className="mt-4 text-center text-xs text-muted-foreground">One persona&apos;s session from the test above, with real stripe.com screenshots. Illustrative demo.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------- Session replay */
+export function SessionReplaySection() {
+  return (
+    <section className="py-24">
+      <div className="container-marketing">
+        <SectionHeading eyebrow="Session replays" icon={ScanEyeIcon} title="See every step, as they saw it.">
+          Step through each session with the screenshot, the action taken and the persona&apos;s reasoning at every step.
+        </SectionHeading>
+        <div className="mx-auto max-w-5xl rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <ReplayDemo />
+        </div>
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import { Hero, HowItWorks, Personas, SessionEvidence, Findings, AgentReadiness, Pricing, FAQ, FinalCTA } from "@/components/landing/sections";
+import { Hero, HowItWorks, Personas, SessionEvidence, SessionReplaySection, Findings, AgentReadiness, Pricing, FAQ, FinalCTA } from "@/components/landing/sections";
 
 export default function HomePage() {
   return (
@@ -7,6 +7,7 @@ export default function HomePage() {
       <Personas />
       <HowItWorks />
       <SessionEvidence />
+      <SessionReplaySection />
       <Findings />
       <AgentReadiness />
       <Pricing />

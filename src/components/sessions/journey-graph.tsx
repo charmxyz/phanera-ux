@@ -153,10 +153,12 @@ type Props = {
   outcome: string | null;
   finalReport: string | null;
   active: boolean;
+  /** Let the mouse wheel scroll the page instead of zooming the graph (e.g. on the homepage). */
+  passiveWheel?: boolean;
 };
 
 /** Page-to-page flow of one persona session (React Flow). Click a page for full detail. */
-export function JourneyGraph({ events, issues, persona, goal, outcome, finalReport, active }: Props) {
+export function JourneyGraph({ events, issues, persona, goal, outcome, finalReport, active, passiveWheel = false }: Props) {
   const journey = useMemo(() => buildJourney(events, issues), [events, issues]);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -226,6 +228,8 @@ export function JourneyGraph({ events, issues, persona, goal, outcome, finalRepo
           maxZoom={1.5}
           nodesConnectable={false}
           elementsSelectable={false}
+          zoomOnScroll={!passiveWheel}
+          preventScrolling={!passiveWheel}
           onNodeClick={(_, n) => setSelected((cur) => (n.type === "start" || cur === n.id ? null : n.id))}
           proOptions={{ hideAttribution: false }}
           style={{ background: "var(--background)" }}

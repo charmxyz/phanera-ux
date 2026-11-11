@@ -33,8 +33,8 @@ const ACTION_LABEL: Record<string, string> = {
 };
 
 /** Step-by-step screenshot replay with an action timeline (PRD §14.4). */
-export function SessionReplay({ events, startedAt }: { events: ReplayEvent[]; startedAt: string | null }) {
-  const [idx, setIdx] = useState(Math.max(0, events.length - 1));
+export function SessionReplay({ events, startedAt, initialIndex }: { events: ReplayEvent[]; startedAt: string | null; initialIndex?: number }) {
+  const [idx, setIdx] = useState(initialIndex ?? Math.max(0, events.length - 1));
   const shots = events.filter((e) => e.screenshotUrl);
   const current = events[idx];
   // Show the latest screenshot at or before the selected step.

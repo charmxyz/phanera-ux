@@ -198,6 +198,8 @@ export default function MarchScene({ lite, still, active, onReady }: MarchSceneP
   return (
     <Canvas
       dpr={lite ? [1, 1.5] : [1, 1.75]}
+      // Measure layout size, not the on-screen box, so it also works inside CSS-scaled containers (homepage demo).
+      resize={{ offsetSize: true }}
       shadows={lite ? false : "percentage"}
       frameloop={still || !active ? "demand" : "always"}
       camera={{ fov: 30, near: 0.1, far: 80, position: [0, 11, 9] }}

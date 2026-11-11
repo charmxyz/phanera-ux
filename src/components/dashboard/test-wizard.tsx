@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BotIcon, Loader2Icon, MonitorIcon, PencilIcon, PlusIcon, RefreshCwIcon, ShieldCheckIcon, SmartphoneIcon, Trash2Icon } from "lucide-react";
+import { BotIcon, CompassIcon, Loader2Icon, MonitorIcon, PencilIcon, PlusIcon, RefreshCwIcon, ShieldCheckIcon, SmartphoneIcon, TargetIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { AntAvatar } from "@/components/ants/pixel-ant";
 import { PersonaEditor } from "@/components/personas/persona-editor";
 import { createTest, generateExtraPersona, regeneratePersonas } from "@/app/actions/dashboard";
 import type { Persona } from "@/lib/claude/schemas";
+import { EXPLORE_BUDGET_MULTIPLIER, TEST_CREDITS, type TestMode } from "@/lib/tests/mode";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -32,6 +33,8 @@ const toItems = (ps: Persona[], max: number): Item[] => ps.map((p, i) => ({ pers
 
 export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits, usage }: Props) {
   const router = useRouter();
+  // Explore is the default, unless the user can't afford it.
+  const [mode, setMode] = useState<TestMode>(usage.remaining >= TEST_CREDITS.explore ? "explore" : "goal");
   const [goalChoice, setGoalChoice] = useState<string>(suggestedGoals[0] ?? "__custom");
   const [customGoal, setCustomGoal] = useState("");
   const [items, setItems] = useState<Item[]>(() => toItems(suggestedPersonas, limits.personasPerTest));
@@ -39,11 +42,14 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
   const [regenPending, startRegen] = useTransition();
   const [startPending, startStart] = useTransition();
 
-  const goal = goalChoice === "__custom" ? customGoal.trim() : goalChoice;
+  const exploring = mode === "explore";
+  const goal = exploring ? "" : goalChoice === "__custom" ? customGoal.trim() : goalChoice;
+  const credits = TEST_CREDITS[mode];
   const selected = items.filter((i) => i.selected);
   const overLimit = selected.length > limits.personasPerTest;
   const outOfUsage = usage.remaining <= 0;
-  const canStart = goal.length >= 5 && selected.length > 0 && !overLimit && !outOfUsage;
+  const notEnoughCredits = !outOfUsage && usage.remaining < credits;
+  const canStart = (exploring || goal.length >= 5) && selected.length > 0 && !overLimit && !outOfUsage && !notEnoughCredits;
 
   const regenerate = () =>
     startRegen(async () => {
@@ -54,7 +60,11 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
 
   const start = () =>
     startStart(async () => {
-      const res = await createTest({ websiteId: website.id, goal, personas: selected.map((s) => s.persona) });
+      const res = await createTest(
+        exploring
+          ? { mode: "explore", websiteId: website.id, personas: selected.map((s) => s.persona) }
+          : { mode: "goal", websiteId: website.id, goal, personas: selected.map((s) => s.persona) },
+      );
       if (res.ok) router.push(`/dashboard/tests/${res.testId}`);
       else toast.error(res.error);
     });
@@ -75,47 +85,78 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
       </Step>
 
       {/* Step 2 */}
-      <Step n={2} title="User task" description="Pick a suggested task or describe what users should try to do.">
-        <div className="grid gap-2" role="radiogroup" aria-label="User task">
-          {suggestedGoals.map((g) => (
-            <button
-              key={g}
-              type="button"
-              role="radio"
-              aria-checked={goalChoice === g}
-              onClick={() => setGoalChoice(g)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                goalChoice === g ? "border-primary/60 bg-primary/5" : "border-border hover:bg-accent/50",
-              )}
-            >
-              <span className={cn("size-3.5 shrink-0 rounded-full border", goalChoice === g ? "border-[4px] border-primary" : "border-muted-foreground/50")} />
-              {g}
-            </button>
-          ))}
-          <div className={cn("grid gap-2 rounded-lg border px-3 py-2.5", goalChoice === "__custom" ? "border-primary/60 bg-primary/5" : "border-border")}>
-            <Label htmlFor="custom-goal" className="text-sm font-normal">What should users try to do?</Label>
-            <Textarea
-              id="custom-goal"
-              rows={2}
-              maxLength={500}
-              placeholder="e.g. Can a small agency owner figure out whether the Startup plan includes white-label reports?"
-              value={customGoal}
-              onFocus={() => setGoalChoice("__custom")}
-              onChange={(e) => {
-                setGoalChoice("__custom");
-                setCustomGoal(e.target.value);
-              }}
-            />
-          </div>
+      <Step n={2} title="Goal" description="Let the agents explore the whole site on their own, or give them a specific task.">
+        <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Goal">
+          <ModeOption
+            checked={exploring}
+            onSelect={() => setMode("explore")}
+            icon={<CompassIcon className="size-4" />}
+            title="Let agent explore"
+            credits={TEST_CREDITS.explore}
+            badge="Recommended"
+            disabled={usage.remaining < TEST_CREDITS.explore}
+          >
+            Agents roam the site freely and hunt for broken links, errors, dead ends and confusing content. Uses more compute: {EXPLORE_BUDGET_MULTIPLIER}× the actions and time per persona.
+          </ModeOption>
+          <ModeOption
+            checked={!exploring}
+            onSelect={() => setMode("goal")}
+            icon={<TargetIcon className="size-4" />}
+            title="Set a goal"
+            credits={TEST_CREDITS.goal}
+          >
+            Every persona attempts one task you choose, like finding pricing or signing up, and you learn whether they could do it.
+          </ModeOption>
         </div>
+        {usage.remaining < TEST_CREDITS.explore && usage.remaining > 0 && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Exploring needs {TEST_CREDITS.explore} credits and you have {usage.remaining} left.
+          </p>
+        )}
+
+        {!exploring && (
+          <div className="mt-4 grid gap-2" role="radiogroup" aria-label="User task">
+            <p className="text-sm text-muted-foreground">Pick a suggested task or describe what users should try to do.</p>
+            {suggestedGoals.map((g) => (
+              <button
+                key={g}
+                type="button"
+                role="radio"
+                aria-checked={goalChoice === g}
+                onClick={() => setGoalChoice(g)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  goalChoice === g ? "border-primary/60 bg-primary/5" : "border-border hover:bg-accent/50",
+                )}
+              >
+                <span className={cn("size-3.5 shrink-0 rounded-full border", goalChoice === g ? "border-[4px] border-primary" : "border-muted-foreground/50")} />
+                {g}
+              </button>
+            ))}
+            <div className={cn("grid gap-2 rounded-lg border px-3 py-2.5", goalChoice === "__custom" ? "border-primary/60 bg-primary/5" : "border-border")}>
+              <Label htmlFor="custom-goal" className="text-sm font-normal">What should users try to do?</Label>
+              <Textarea
+                id="custom-goal"
+                rows={2}
+                maxLength={500}
+                placeholder="e.g. Can a small agency owner figure out whether the Startup plan includes white-label reports?"
+                value={customGoal}
+                onFocus={() => setGoalChoice("__custom")}
+                onChange={(e) => {
+                  setGoalChoice("__custom");
+                  setCustomGoal(e.target.value);
+                }}
+              />
+            </div>
+          </div>
+        )}
       </Step>
 
       {/* Step 3 */}
       <Step
         n={3}
         title="Personas"
-        description={`Every AI persona attempts the same user task above. What differs is what drives them and how that shapes the way they browse. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
+        description={`${exploring ? "Every AI persona explores the same site." : "Every AI persona attempts the same user task above."} What differs is what drives them and how that shapes the way they browse. Select up to ${limits.personasPerTest} on the ${limits.planLabel} plan.`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={regenerate} disabled={regenPending}>
@@ -166,12 +207,14 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
       <Step n={4} title="Review">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <Row label="Website"><span className="font-mono">{website.domain}</span></Row>
-          <Row label="User task">{goal || <span className="text-muted-foreground">Not set</span>}</Row>
+          <Row label="Goal">{exploring ? "Let agent explore" : goal || <span className="text-muted-foreground">Not set</span>}</Row>
           <Row label="Personas">{selected.length} selected</Row>
-          <Row label="Limits per persona">{limits.maxActionsPerPersona} actions · {limits.maxDurationMin} min</Row>
+          <Row label="Limits per persona">
+            {limits.maxActionsPerPersona * (exploring ? EXPLORE_BUDGET_MULTIPLIER : 1)} actions · {limits.maxDurationMin * (exploring ? EXPLORE_BUDGET_MULTIPLIER : 1)} min
+          </Row>
           <Row label="Pages per website analysis">{limits.pagesPerScan}</Row>
           <Row label="Usage">
-            Uses 1 usability test · {usage.remaining} of {usage.allowance} remaining{usage.period === "month" ? " this month" : ""}
+            Uses <span className="font-medium">{credits} {credits === 1 ? "credit" : "credits"}</span> · {usage.remaining} of {usage.allowance} remaining{usage.period === "month" ? " this month" : ""}
           </Row>
         </dl>
         <Alert className="mt-4">
@@ -180,6 +223,13 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
             Agents browse in isolated sandboxes, stay on <span className="font-mono">{website.domain}</span>, never make purchases, never submit forms that change data, and stop at CAPTCHAs or login walls.
           </AlertDescription>
         </Alert>
+        {notEnoughCredits && (
+          <Alert variant="destructive" className="mt-3">
+            <AlertDescription>
+              Letting the agent explore uses {credits} credits and you have {usage.remaining} left. Choose “Set a goal” to run a 1-credit test.
+            </AlertDescription>
+          </Alert>
+        )}
         {outOfUsage && (
           <Alert variant="destructive" className="mt-3">
             <AlertDescription>
@@ -210,6 +260,40 @@ export function TestWizard({ website, suggestedGoals, suggestedPersonas, limits,
         }}
       />
     </div>
+  );
+}
+
+function ModeOption({
+  checked, onSelect, icon, title, credits, badge, disabled, children,
+}: { checked: boolean; onSelect: () => void; icon: React.ReactNode; title: string; credits: number; badge?: string; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "border-primary/60 bg-primary/5" : "border-border hover:bg-accent/50",
+      )}
+    >
+      <span className="flex items-center gap-2">
+        <span className={cn("size-3.5 shrink-0 rounded-full border", checked ? "border-[4px] border-primary" : "border-muted-foreground/50")} />
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="font-medium">{title}</span>
+        {badge && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{badge}</span>}
+        <span
+          className={cn(
+            "ml-auto shrink-0 rounded-full border px-2 py-0.5 font-mono text-[11px]",
+            credits > 1 ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "border-border text-muted-foreground",
+          )}
+        >
+          {credits} {credits === 1 ? "credit" : "credits"}
+        </span>
+      </span>
+      <span className="text-sm text-muted-foreground">{children}</span>
+    </button>
   );
 }
 

@@ -7,6 +7,7 @@ import { PersonaSchema, type Persona, type SessionEvaluation } from "@/lib/claud
 import { BILLING_COLUMNS, effectivePlan, planLimits } from "@/lib/usage/plans";
 import { refundTestRun } from "@/lib/usage/usage";
 import { STOPPED_SESSION_MSG } from "./stop";
+import { EXPLORE_BUDGET_MULTIPLIER, testModeOf } from "@/lib/tests/mode";
 import type { Json, Outcome, TestRow } from "@/types/database";
 
 // Personas run in parallel inside one browser; lower this on small machines (~500 MB each).
@@ -44,6 +45,11 @@ async function runTestInner(testId: string) {
   if (!website || !personas || !sessions) throw new Error("Test data incomplete");
   const limits = planLimits(effectivePlan(profile));
   const cfg = (test.configuration ?? {}) as { startUrl?: string };
+  const mode = testModeOf(test.configuration);
+  // Exploring has no finish line, so each persona gets a bigger budget (and the test costs more credits).
+  const budget = mode === "explore" ? EXPLORE_BUDGET_MULTIPLIER : 1;
+  const maxActions = limits.maxActionsPerPersona * budget;
+  const maxDurationMs = limits.maxDurationMsPerPersona * budget;
 
   await db.from("tests").update({ status: "running", started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString(), error: null }).eq("id", testId);
 
@@ -81,7 +87,7 @@ async function runTestInner(testId: string) {
         let evaluation: SessionEvaluation | null = null;
         try {
           // Second line of defence on top of the agent's own watchdog.
-          const budget = limits.maxDurationMsPerPersona + 3 * 60_000;
+          const watchdogMs = maxDurationMs + 3 * 60_000;
           let timer: ReturnType<typeof setTimeout> | undefined;
           run = await Promise.race([
             runPersonaAgent(browser, {
@@ -91,13 +97,14 @@ async function runTestInner(testId: string) {
             allowedDomain: website.domain,
             persona,
             testGoal: test.goal,
-            maxActions: limits.maxActionsPerPersona,
-            maxDurationMs: limits.maxDurationMsPerPersona,
+            mode,
+            maxActions,
+            maxDurationMs,
             screenshots: limits.screenshots,
             signal: stop.signal,
           }),
             new Promise<never>((_, reject) => {
-              timer = setTimeout(() => reject(new Error("The persona's browser stopped responding.")), budget);
+              timer = setTimeout(() => reject(new Error("The persona's browser stopped responding.")), watchdogMs);
             }),
           ]).finally(() => clearTimeout(timer));
           if (stopped() || run.ending === "stopped") {
@@ -109,7 +116,7 @@ async function runTestInner(testId: string) {
             continue;
           }
           await db.from("sessions").update({ current_activity: "Evaluating session" }).eq("id", session.id);
-          evaluation = await evaluateSession({ persona, testGoal: test.goal, websiteSummary: website.summary, run });
+          evaluation = await evaluateSession({ persona, testGoal: test.goal, mode, websiteSummary: website.summary, run });
 
           const environmentFailure = run.ending === "error" && run.steps.length <= 1;
           await db
@@ -169,6 +176,7 @@ async function runTestInner(testId: string) {
   try {
     const report = await synthesiseFindings({
       testGoal: test.goal,
+      mode,
       websiteSummary: website.summary,
       measuredReadiness: measured,
       sessions: usable.map((r) => ({ persona: r.persona, ending: r.run!.ending, evaluation: r.evaluation, steps: r.run!.steps })),

@@ -8,6 +8,7 @@ import { AgentStepSchema, type Persona } from "@/lib/claude/schemas";
 import { isSameSite } from "@/lib/validation/url";
 import { assertPublicUrl } from "@/lib/validation/network";
 import { env } from "@/lib/env";
+import type { TestMode } from "@/lib/tests/mode";
 
 export type AgentRunConfig = {
   sessionId: string;
@@ -16,6 +17,7 @@ export type AgentRunConfig = {
   allowedDomain: string;
   persona: Persona;
   testGoal: string;
+  mode?: TestMode;
   maxActions: number;
   maxDurationMs: number;
   screenshots: "key" | "all";
@@ -326,6 +328,7 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
     const system = browserAgentPrompt.system({
       persona: cfg.persona,
       testGoal: cfg.testGoal,
+      mode: cfg.mode,
       allowedDomain: cfg.allowedDomain,
       maxActions: cfg.maxActions,
     });

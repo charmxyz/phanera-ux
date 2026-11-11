@@ -1,9 +1,10 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { generateStructured } from "@/lib/claude/client";
-import { dateRule, evaluationPrompt, findingsPrompt } from "@/lib/claude/prompts";
+import { dateRule, evaluationPrompt, EXPLORE_EVALUATION_RULE, EXPLORE_FINDINGS_RULE, findingsPrompt } from "@/lib/claude/prompts";
 import { SessionEvaluationSchema, FindingsReportSchema, type Persona, type SessionEvaluation } from "@/lib/claude/schemas";
 import type { AgentRunResult } from "@/lib/agents/persona-agent";
+import type { TestMode } from "@/lib/tests/mode";
 
 /** Picks up to `n` evenly spaced screenshots, always including the last one. */
 function sampleScreens(shots: AgentRunResult["screenshots"], n = 4) {
@@ -16,6 +17,7 @@ function sampleScreens(shots: AgentRunResult["screenshots"], n = 4) {
 export async function evaluateSession(input: {
   persona: Persona;
   testGoal: string;
+  mode?: TestMode;
   websiteSummary: unknown;
   run: AgentRunResult;
 }): Promise<SessionEvaluation> {
@@ -39,18 +41,19 @@ export async function evaluateSession(input: {
       "Evaluate this session.",
     ].join("\n\n"),
   });
-  return generateStructured({ schema: SessionEvaluationSchema, system: `${evaluationPrompt.system}\n${dateRule()}`, content, effort: "medium", maxTokens: 8000, timeoutMs: 180_000, maxRetries: 2 });
+  return generateStructured({ schema: SessionEvaluationSchema, system: [evaluationPrompt.system, input.mode === "explore" ? EXPLORE_EVALUATION_RULE : "", dateRule()].filter(Boolean).join("\n"), content, effort: "medium", maxTokens: 8000, timeoutMs: 180_000, maxRetries: 2 });
 }
 
 export async function synthesiseFindings(input: {
   testGoal: string;
+  mode?: TestMode;
   websiteSummary: unknown;
   measuredReadiness: unknown;
   sessions: { persona: Persona; ending: string; evaluation: SessionEvaluation | null; steps: AgentRunResult["steps"] }[];
 }) {
   return generateStructured({
     schema: FindingsReportSchema,
-    system: `${findingsPrompt.system}\n${dateRule()}`,
+    system: [findingsPrompt.system, input.mode === "explore" ? EXPLORE_FINDINGS_RULE : "", dateRule()].filter(Boolean).join("\n"),
     effort: "high",
     timeoutMs: 300_000,
     maxRetries: 2,

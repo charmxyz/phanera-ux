@@ -13,6 +13,7 @@ import { extraPersonaPrompt, personaPrompt } from "@/lib/claude/prompts";
 import { PersonaSchema, PersonaSuggestionsSchema, desktopUnlessAsked, type Persona } from "@/lib/claude/schemas";
 import type { Json } from "@/types/database";
 import { forceStopTest, STOP_GRACE_MS } from "@/lib/agents/stop";
+import { EXPLORE_BUDGET_MULTIPLIER, EXPLORE_GOAL, EXPLORE_TITLE, TEST_CREDITS } from "@/lib/tests/mode";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -111,11 +112,19 @@ export async function generateExtraPersona(websiteId: string, goal: string, exis
   }
 }
 
-const CreateTestInput = z.object({
-  websiteId: z.string().uuid(),
-  goal: z.string().trim().min(5, "Describe what you'd like to test.").max(500),
-  personas: z.array(PersonaSchema).min(1, "Select at least one persona."),
-});
+const CreateTestInput = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("goal"),
+    websiteId: z.string().uuid(),
+    goal: z.string().trim().min(5, "Describe what you'd like to test.").max(500),
+    personas: z.array(PersonaSchema).min(1, "Select at least one persona."),
+  }),
+  z.object({
+    mode: z.literal("explore"),
+    websiteId: z.string().uuid(),
+    personas: z.array(PersonaSchema).min(1, "Select at least one persona."),
+  }),
+]);
 
 /** Validates everything in PRD §11.2, reserves usage, and enqueues the run. */
 export async function createTest(input: z.input<typeof CreateTestInput>): Promise<Result<{ testId: string }>> {
@@ -123,7 +132,11 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
     const user = await requireUser();
     const parsed = CreateTestInput.safeParse(input);
     if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid test configuration." };
-    const { websiteId, goal, personas } = parsed.data;
+    const { websiteId, personas, mode } = parsed.data;
+    const goal = parsed.data.mode === "goal" ? parsed.data.goal : EXPLORE_GOAL;
+    const title = mode === "explore" ? EXPLORE_TITLE : goal.length > 80 ? `${goal.slice(0, 77)}…` : goal;
+    const credits = TEST_CREDITS[mode];
+    const budget = mode === "explore" ? EXPLORE_BUDGET_MULTIPLIER : 1;
 
     const db = createAdminClient();
     const { data: website } = await db.from("websites").select("*").eq("id", websiteId).single();
@@ -139,6 +152,9 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
             ? `You've used all ${usage.allowance} usability tests included in the ${usage.limits.label} plan.`
             : `You've used all ${usage.allowance} usability tests for this month on the ${usage.limits.label} plan.`,
       };
+    }
+    if (usage.remaining < credits) {
+      return { ok: false, error: `Letting the agent explore uses ${credits} credits and you have ${usage.remaining} left. Set a goal instead (1 credit).` };
     }
     if (personas.length > usage.limits.personasPerTest) {
       return { ok: false, error: `The ${usage.limits.label} plan allows up to ${usage.limits.personasPerTest} personas per test.` };
@@ -158,13 +174,15 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
       .insert({
         user_id: user.id,
         website_id: websiteId,
-        title: goal.length > 80 ? `${goal.slice(0, 77)}…` : goal,
+        title,
         goal,
         configuration: {
           startUrl: url,
           plan: usage.plan,
-          maxActionsPerPersona: usage.limits.maxActionsPerPersona,
-          maxDurationMsPerPersona: usage.limits.maxDurationMsPerPersona,
+          mode,
+          credits,
+          maxActionsPerPersona: usage.limits.maxActionsPerPersona * budget,
+          maxDurationMsPerPersona: usage.limits.maxDurationMsPerPersona * budget,
         },
       })
       .select("id")
@@ -185,7 +203,7 @@ export async function createTest(input: z.input<typeof CreateTestInput>): Promis
       )
       .select("id");
     await db.from("sessions").insert((personaRows ?? []).map((p) => ({ test_id: test.id, persona_id: p.id, user_id: user.id })));
-    await db.from("usage").insert({ user_id: user.id, test_id: test.id, usage_type: "test_run" });
+    await db.from("usage").insert({ user_id: user.id, test_id: test.id, usage_type: "test_run", quantity: credits });
 
     try {
       await enqueueTestRun(test.id);

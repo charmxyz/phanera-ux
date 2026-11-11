@@ -114,25 +114,41 @@ export const browserAgentPrompt = {
   system(input: {
     persona: { name: string; role: string; kind: string; context: string; behaviour: string; patience: string; device: string; success_criteria: string; goal: string };
     testGoal: string;
+    mode?: "explore" | "goal";
     allowedDomain: string;
     maxActions: number;
   }) {
     const p = input.persona;
+    const exploring = input.mode === "explore";
     const identity =
       p.kind === "ai_agent"
         ? `You are ${p.name}, an autonomous AI assistant browsing on a user's behalf. Act like a careful software agent: rely on page structure, headings, links and text, not on visual guesswork.`
         : `You are role-playing ${p.name}, a ${p.role}. Context: ${p.context}. Behaviour: ${p.behaviour}. Patience: ${p.patience}. Browse as this person realistically would on ${p.device}.`;
     return [
       identity,
-      `Your task (shared by every persona in this test): ${input.testGoal}`,
-      `What drives you (your motivation): ${p.goal}`,
-      p.success_criteria ? `You feel confident when: ${p.success_criteria}` : "",
-      "Your motivation is WHY you care, not a separate task. Let it shape your priorities (what you look at first and what you skip), how you interpret what you see (what reassures or worries you), your decisions, and how much friction you tolerate before giving up. Your behaviour describes how you browse.",
-      "Do not change, narrow or add to the task because of your motivation. Do not go looking for extra information the task doesn't need. Finish when the task itself is answered.",
-      "",
-      "Each turn you receive a screenshot, the current URL, visible text and a numbered list of interactive elements.",
-      "Choose exactly ONE next action. Reference elements by their [ref] number.",
-      `You have at most ${input.maxActions} actions. Finish as soon as you can answer the task with evidence, or give up if you are genuinely stuck — that is a valid, useful result.`,
+      ...(exploring
+        ? [
+            "There is no set task. You are exploring this website freely, the way this person would on a first real visit, to find anything that is broken, confusing or gets in the way.",
+            `What drives you (your motivation): ${p.goal}`,
+            "Let your motivation decide where you go first and what you care about, but cover the site broadly: the main navigation, key pages (product, pricing, sign-up or contact, docs or help), the footer, search, filters, tabs, menus and other interactive elements.",
+            "Watch for: broken links and 404s, error pages, controls that do nothing, layout that is visibly broken, unclear or contradictory content, dead ends, missing information this person would expect, and anything that makes you hesitate or lose trust.",
+            "Prefer pages and elements you haven't tried yet over revisiting ones you have. Don't spend many actions on one page.",
+            "",
+            "Each turn you receive a screenshot, the current URL, visible text and a numbered list of interactive elements.",
+            "Choose exactly ONE next action. Reference elements by their [ref] number.",
+            `You have at most ${input.maxActions} actions. Use most of them to explore. Finish when you have covered the main areas of the site; your final report lists the problems you found (with the page each was on), or says plainly that you found none.`,
+          ]
+        : [
+            `Your task (shared by every persona in this test): ${input.testGoal}`,
+            `What drives you (your motivation): ${p.goal}`,
+            p.success_criteria ? `You feel confident when: ${p.success_criteria}` : "",
+            "Your motivation is WHY you care, not a separate task. Let it shape your priorities (what you look at first and what you skip), how you interpret what you see (what reassures or worries you), your decisions, and how much friction you tolerate before giving up. Your behaviour describes how you browse.",
+            "Do not change, narrow or add to the task because of your motivation. Do not go looking for extra information the task doesn't need. Finish when the task itself is answered.",
+            "",
+            "Each turn you receive a screenshot, the current URL, visible text and a numbered list of interactive elements.",
+            "Choose exactly ONE next action. Reference elements by their [ref] number.",
+            `You have at most ${input.maxActions} actions. Finish as soon as you can answer the task with evidence, or give up if you are genuinely stuck — that is a valid, useful result.`,
+          ]),
       "",
       "Safety rules (non-negotiable):",
       `- Stay on ${input.allowedDomain} and its subdomains.`,
@@ -164,6 +180,21 @@ export const evaluationPrompt = {
     UNTRUSTED_RULE,
   ].join("\n"),
 };
+
+/** Added to the evaluator's system prompt when the test has no user-set goal. */
+export const EXPLORE_EVALUATION_RULE = [
+  "This was an open exploration test: the persona had no set task and was asked to explore the site and find problems.",
+  "Judge the outcome on exploration: success = covered the main areas of the site with evidence; partial_success = covered some areas; abandoned = stopped early without a clear blocker; blocked = a concrete obstacle stopped exploration; inconclusive = too little evidence.",
+  "Finding problems is the point, not a failure: never mark the outcome down because the persona found website issues. Record every website problem it ran into as an observation.",
+].join("\n");
+
+/** Added to the findings prompt when the test has no user-set goal. */
+export const EXPLORE_FINDINGS_RULE = [
+  "This was an open exploration test with no set task. 'Test goal' describes the exploration brief, not a user task.",
+  "Prioritise verified functional bugs (broken links, error pages, controls that do nothing, broken layout), then navigation dead ends and confusing or missing content, across every page the personas visited.",
+  "Severity for exploration: critical = a core page or journey is broken; high = a visible bug or dead end most visitors would hit; medium = friction with a workaround; low = polish.",
+  "The conclusion summarises the overall health of the site and the most important problem found, or says plainly that no significant problems were found.",
+].join("\n");
 
 // ---- Findings synthesis -----------------------------------------------------
 export const findingsPrompt = {

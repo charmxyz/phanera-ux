@@ -218,7 +218,7 @@ const TIERS = [
   },
   {
     name: "Startup", price: "£25", period: "/month", cta: "Upgrade", href: "/dashboard/settings#billing", available: true, highlight: true,
-    features: ["10 usability tests every month", "Up to 10 AI personas per test", "50 pages per website analysis", "Longer sessions: 30 actions, 10 minutes per persona", "Screenshots of every step", "Pay by card or PayPal"],
+    features: ["10 usability tests every month", "Up to 10 AI personas per test", "50 pages per website analysis", "Longer sessions: 30 actions, 10 minutes per persona", "Screenshots of every step"],
   },
   {
     name: "Enterprise", price: "Custom", period: "", cta: "Contact us", href: "mailto:phaneracom@gmail.com", available: true,
@@ -284,7 +284,7 @@ const FAQS = [
   ["Does it cover AI assistants too?", "Yes. Every usability test includes an AI assistant persona, plus an AI accessibility report on whether assistants can find, read and use your pages."],
   ["Can I test any website?", "Any public website. Logged-in pages, localhost and private networks aren't supported, and AI personas never buy anything or submit forms that change data."],
   ["How long does a usability test take?", "Usually a few minutes. You can follow each AI persona live while it works."],
-  ["How much does Phanera cost?", "The Free plan includes 5 usability tests with up to 3 AI personas each. The Startup plan is £25/month for 10 usability tests a month with up to 10 AI personas each, paid by card or PayPal and cancellable anytime."],
+  ["How much does Phanera cost?", "The Free plan includes 5 usability tests with up to 3 AI personas each. The Startup plan is £25/month for 10 usability tests a month with up to 10 AI personas each, paid by card and cancellable anytime."],
 ];
 
 export function FAQ() {

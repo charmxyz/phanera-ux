@@ -7,6 +7,7 @@ import { requireSession, formatDate } from "@/lib/dashboard/queries";
 import { getUsageSummary } from "@/lib/usage/usage";
 import { BillingCard } from "@/components/billing/billing-card";
 import { isPaypalConfigured, isStripeConfigured } from "@/lib/env";
+import { PAYPAL_CHECKOUT_PAUSED } from "@/lib/billing/paypal";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -35,7 +36,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/dashboa
           plan={usage.plan}
           notice={typeof sp.billing === "string" ? sp.billing : undefined}
           stripeEnabled={isStripeConfigured()}
-          paypalEnabled={isPaypalConfigured()}
+          paypalEnabled={isPaypalConfigured() && !PAYPAL_CHECKOUT_PAUSED}
         />
       )}
       <Card>

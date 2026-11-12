@@ -11,6 +11,7 @@ import { ACTIVE_TEST, StatusLabel } from "@/components/sessions/status";
 import type { ReportSummary } from "@/components/report/verdict";
 import { ReportBody, ReportSection } from "@/components/report/report-body";
 import { ShareButton } from "@/components/report/share-button";
+import { TestGoal } from "@/components/report/test-goal";
 import { StopTestButton } from "@/components/dashboard/stop-test-button";
 import { STOP_GRACE_MS } from "@/lib/agents/stop";
 import { env } from "@/lib/env";
@@ -64,7 +65,7 @@ export default async function TestPage({ params }: PageProps<"/dashboard/tests/[
             <span className="truncate">{website.domain}</span>
           </Link>
         }
-        description={<span className="block max-w-3xl text-[15px] leading-snug text-pretty text-muted-foreground">{test.goal}</span>}
+        description={<TestGoal goal={test.goal} configuration={test.configuration} className="mt-1 text-[15px]" />}
         actions={
           <span className="flex items-center gap-3">
             <StatusLabel status={test.status} />

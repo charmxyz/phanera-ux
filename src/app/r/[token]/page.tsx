@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EyeIcon } from "lucide-react";
 import { ReportBody } from "@/components/report/report-body";
+import { TestGoal } from "@/components/report/test-goal";
 import { getSharedEvents, getSharedReport } from "@/lib/share/report";
 import { formatDate } from "@/lib/dashboard/format";
 import type { SessionEventRow } from "@/types/database";
@@ -34,7 +35,7 @@ export default async function SharedReportPage({ params }: PageProps<"/r/[token]
           <img src={`https://www.google.com/s2/favicons?domain=${website.domain}&sz=64`} alt="" className="size-8 shrink-0 rounded-md sm:size-10" />
           <span className="truncate">{website.domain}</span>
         </h1>
-        <p className="max-w-3xl text-lg leading-snug text-pretty text-muted-foreground">{test.goal}</p>
+        <p><TestGoal goal={test.goal} configuration={test.configuration} className="text-lg" /></p>
       </header>
 
       <ReportBody test={test} personas={personas} sessions={sessions} findings={findings} eventsBySession={eventsBySession} urls={urls} />

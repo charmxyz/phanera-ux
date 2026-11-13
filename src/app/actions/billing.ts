@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env, isPaypalConfigured, isStripeConfigured } from "@/lib/env";
 import { effectivePlan } from "@/lib/usage/plans";
 import { stripe } from "@/lib/billing/stripe";
-import { cancelPaypalSubscription, createPaypalSubscription, PAYPAL_CHECKOUT_PAUSED, syncPaypalSubscription } from "@/lib/billing/paypal";
+import { cancelPaypalSubscription, createPaypalSubscription, syncPaypalSubscription } from "@/lib/billing/paypal";
 
 const SETTINGS = "/dashboard/settings";
 const back = (state: string) => `${SETTINGS}?billing=${state}#billing`;
@@ -64,7 +64,7 @@ export async function openStripePortal() {
 
 /** Pay with PayPal: creates a PayPal subscription and sends the user to approve it. */
 export async function startPaypalCheckout() {
-  if (!isPaypalConfigured() || PAYPAL_CHECKOUT_PAUSED) redirect(back("unavailable"));
+  if (!isPaypalConfigured()) redirect(back("unavailable"));
   const { user, profile } = await loadProfile();
   if (effectivePlan(profile) === "startup" && !profile.cancel_at_period_end) redirect(back("already"));
   let approveUrl: string;

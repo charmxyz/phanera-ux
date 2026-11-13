@@ -2,9 +2,6 @@ import "server-only";
 import { env } from "@/lib/env";
 import { applySubscription } from "./sync";
 
-/** New PayPal sign-ups are paused: the button is hidden and checkout refuses. Existing PayPal subscriptions still sync and can cancel. */
-export const PAYPAL_CHECKOUT_PAUSED = true;
-
 /** Minimal PayPal REST client (Subscriptions + webhook verification). */
 const base = () => (env.paypalLive() ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com");
 

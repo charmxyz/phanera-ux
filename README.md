@@ -119,11 +119,11 @@ Full details (data model, every pipeline, security model, environment variables,
 
 ## How we use PayPal
 
-PayPal powers the paid **Startup plan (£99 / month)** through the **PayPal Subscriptions REST API**, alongside card payments with Stripe. Users click **Pay with PayPal** in Settings and subscribe without entering card details on our site.
+PayPal powers the paid **Startup plan (£25 / month)** through the **PayPal Subscriptions REST API**, alongside card payments with Stripe. Users click **Pay with PayPal** in Settings and subscribe without entering card details on our site.
 
 | Step | What happens | PayPal API |
 |---|---|---|
-| Plan setup | A one-time script creates the "Phanera Startup" product and a £99 / month billing plan and prints its plan ID. | `POST /v1/catalogs/products`, `POST /v1/billing/plans` ([scripts/paypal-setup.mjs](scripts/paypal-setup.mjs)) |
+| Plan setup | A one-time script creates the "Phanera Startup" product and a £25 / month billing plan and prints its plan ID. | `POST /v1/catalogs/products`, `POST /v1/billing/plans` ([scripts/paypal-setup.mjs](scripts/paypal-setup.mjs)) |
 | Authentication | The server gets an OAuth access token with the app's client credentials and caches it until it expires. | `POST /v1/oauth2/token` |
 | Subscribe | Phanera creates a subscription for the plan, tagged with the user's ID (`custom_id`), and redirects the user to PayPal's approval page. | `POST /v1/billing/subscriptions` |
 | Return | After approval, PayPal sends the user back. Phanera re-reads the subscription from PayPal, checks it belongs to the signed-in user, and activates the plan immediately. | `GET /v1/billing/subscriptions/{id}` |

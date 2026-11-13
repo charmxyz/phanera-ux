@@ -35,7 +35,7 @@ Six steps to run your own Phanera. Steps 1 to 4 get it running on your laptop in
 | [Supabase](https://supabase.com) | Database, sign-in, screenshot storage | Free tier works |
 | [Anthropic](https://console.anthropic.com) | Claude: analysis, personas, browsing, review | Pay per use |
 | [Vercel](https://vercel.com) | The web app, or any Node.js host | Free tier works |
-| [Railway](https://railway.com) | The worker that runs tests in Chromium, or any Docker host | Usage based |
+| [Railway](https://railway.com) | The worker that runs tests in Chromium, or any Docker host | Hobby plan, $5 a month |
 | [Resend](https://resend.com) | Magic-link sign-in emails (optional locally) | Free plan works |
 | Stripe, PayPal | Only if you want to charge your own users | Optional |
 

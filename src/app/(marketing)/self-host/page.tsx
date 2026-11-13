@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon, ArrowUpRightIcon, ClipboardCheckIcon, GlobeIcon, MonitorPlayIcon, ScanEyeIcon, ScanTextIcon, Share2Icon, UsersIcon, type LucideIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { PixelAnt } from "@/components/ants/pixel-ant";
 import { GithubMark } from "@/components/brand/github-mark";
+import { ServiceLogo, type ServiceLogoName } from "@/components/brand/service-logos";
 import { GITHUB_URL } from "@/lib/contact";
 import { STARTUP_PRICE } from "@/lib/usage/plans";
 import { cn } from "@/lib/utils";
@@ -17,21 +19,20 @@ export const metadata: Metadata = {
 /** Each step links to its heading in the README on GitHub. */
 const readme = (anchor: string) => `${GITHUB_URL}#${anchor}`;
 
-const COSTS = [
+const COSTS: { name: string; logo?: ServiceLogoName; note: string; cost: string }[] = [
   { name: "Phanera", note: "MIT license", cost: "Free" },
-  { name: "Supabase", note: "Database, sign-in, storage", cost: "Free tier" },
-  { name: "Vercel", note: "The web app", cost: "Free tier" },
-  { name: "Railway", note: "The test worker", cost: "Usage based" },
-  { name: "Claude API", note: "Every persona and report", cost: "Pay per use" },
+  { name: "Supabase", logo: "supabase", note: "Database, sign-in, storage", cost: "Free tier" },
+  { name: "Vercel", logo: "vercel", note: "The web app", cost: "Free tier" },
+  { name: "Railway", logo: "railway", note: "The test worker", cost: "$5 a month" },
+  { name: "Claude API", logo: "anthropic", note: "Every persona and report", cost: "Pay per use" },
 ];
 
-const SERVICES: { name: string; optional?: boolean; alt?: string; for: string; cost: string }[] = [
-  { name: "Supabase", for: "Accounts, websites, tests, findings and screenshots", cost: "Free tier works" },
-  { name: "Anthropic", for: "Claude: website analysis, personas, browsing, review and findings", cost: "Pay per use. A faster model for the browsing agent makes tests cheaper" },
-  { name: "Vercel", alt: "or any Node.js host", for: "The web app", cost: "Free tier works" },
-  { name: "Railway", alt: "or any Docker host", for: "The worker that runs each persona in headless Chromium", cost: "Usage based. About 500 MB of RAM per persona running at once" },
-  { name: "Resend", optional: true, for: "Magic-link sign-in emails, through Supabase", cost: "Free plan works" },
-  { name: "Stripe or PayPal", optional: true, for: "Only if you charge your own users", cost: "Their usual fees" },
+const SERVICES: { name: string; logo: ServiceLogoName; optional?: boolean; alt?: string; for: string; cost: string }[] = [
+  { name: "Supabase", logo: "supabase", for: "Accounts, websites, tests, findings and screenshots", cost: "Free tier works" },
+  { name: "Anthropic", logo: "anthropic", for: "Claude: website analysis, personas, browsing, review and findings", cost: "Pay per use. A faster model for the browsing agent makes tests cheaper" },
+  { name: "Vercel", logo: "vercel", alt: "or any Node.js host", for: "The web app", cost: "Free tier works" },
+  { name: "Railway", logo: "railway", alt: "or any Docker host", for: "The worker that runs each persona in headless Chromium", cost: "Hobby plan, $5 a month. About 500 MB of RAM per persona running at once" },
+  { name: "Resend", logo: "resend", optional: true, for: "Magic-link sign-in emails, through Supabase", cost: "Free plan works" },
 ];
 
 const COMPARE: [string, string, string][] = [
@@ -120,10 +121,17 @@ export default function SelfHostPage() {
             <p className="text-sm font-medium">What a self-hosted Phanera costs</p>
             <dl className="mt-4 divide-y divide-border text-sm">
               {COSTS.map((c) => (
-                <div key={c.name} className="flex items-baseline justify-between gap-4 py-2.5">
-                  <dt>
-                    <span className="font-medium">{c.name}</span>
-                    <span className="block text-xs text-muted-foreground">{c.note}</span>
+                <div key={c.name} className="flex items-center justify-between gap-4 py-2.5">
+                  <dt className="flex items-center gap-3">
+                    {c.logo ? (
+                      <ServiceLogo name={c.logo} />
+                    ) : (
+                      <span aria-hidden className="flex size-6 shrink-0 items-center justify-center"><PixelAnt className="h-5 w-auto" /></span>
+                    )}
+                    <span>
+                      <span className="font-medium">{c.name}</span>
+                      <span className="block text-xs text-muted-foreground">{c.note}</span>
+                    </span>
                   </dt>
                   <dd className="shrink-0 font-mono text-xs">{c.cost}</dd>
                 </div>
@@ -153,10 +161,11 @@ export default function SelfHostPage() {
                 <tr key={s.name} className="align-top">
                   <th scope="row" className="px-4 py-3.5 font-medium">
                     <span className="flex flex-wrap items-center gap-2">
+                      <ServiceLogo name={s.logo} />
                       {s.name}
                       {s.optional && <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-normal text-muted-foreground">Optional</span>}
                     </span>
-                    {s.alt && <span className="block text-xs font-normal text-muted-foreground">{s.alt}</span>}
+                    {s.alt && <span className="mt-1 block text-xs font-normal text-muted-foreground">{s.alt}</span>}
                   </th>
                   <td className="px-4 py-3.5 text-muted-foreground">{s.for}</td>
                   <td className="px-4 py-3.5 text-muted-foreground">{s.cost}</td>

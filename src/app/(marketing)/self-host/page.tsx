@@ -94,8 +94,8 @@ function GuideButton({ variant = "default" }: { variant?: "default" | "outline" 
 export default function SelfHostPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="py-16 sm:py-24">
+      {/* Hero. data-page hides the footer's self-hosting box on this page. */}
+      <section data-page="self-host" className="py-16 sm:py-24">
         <div className="container-marketing grid items-center gap-12 lg:grid-cols-[1fr_420px]">
           <div className="max-w-[580px]">
             <Eyebrow>Open source, MIT</Eyebrow>

@@ -206,24 +206,39 @@ export async function robustClick(page: Page, el: Element): Promise<{ note: stri
 }
 
 export async function guardContext(context: BrowserContext, domain: string) {
+  // An error thrown in a route handler escapes Playwright and crashes the whole worker
+  // process (every test running in it), so this handler must never throw.
   await context.route("**/*", async (route) => {
-    const req = route.request();
-    let u: URL;
     try {
-      u = new URL(req.url());
-    } catch {
-      return route.abort();
-    }
-    if (!/^(https?|data|blob):$/.test(u.protocol)) return route.abort();
-    if (req.isNavigationRequest()) {
-      // Main-document navigations must stay on the target site and be read-only.
-      if (req.frame() === req.frame().page().mainFrame()) {
-        if (!isSameSite(u.toString(), domain)) return route.abort("blockedbyclient");
-        if (req.method() !== "GET") return route.abort("blockedbyclient");
+      const req = route.request();
+      let u: URL;
+      try {
+        u = new URL(req.url());
+      } catch {
+        return await route.abort();
       }
+      if (!/^(https?|data|blob):$/.test(u.protocol)) return await route.abort();
+      if (req.isNavigationRequest()) {
+        // req.frame() throws when the navigation starts before its frame exists: a link
+        // opening a new tab (target=_blank, window.open). That is a top-level page too.
+        let frame: ReturnType<typeof req.frame> | null = null;
+        try {
+          frame = req.frame();
+        } catch {
+          /* new tab: treat as a main-document navigation */
+        }
+        // Main-document navigations must stay on the target site and be read-only.
+        if (!frame || frame.parentFrame() === null) {
+          if (!isSameSite(u.toString(), domain)) return await route.abort("blockedbyclient");
+          if (req.method() !== "GET") return await route.abort("blockedbyclient");
+        }
+      }
+      if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(u.hostname)) return await route.abort("blockedbyclient");
+      return await route.continue();
+    } catch {
+      // Page closed mid-request, or the route was already handled: nothing to do.
+      await route.abort().catch(() => {});
     }
-    if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(u.hostname)) return route.abort("blockedbyclient");
-    return route.continue();
   });
 }
 
@@ -372,6 +387,8 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
       const shot = await shoot();
       const lookMs = stepTime();
       await setActivity(i === 1 ? "Reading the page" : `Thinking about step ${i}`, i - 1);
+      // Logged before the slow phases (not only after), so a hang shows which phase it is in.
+      console.log(`${tag} step ${i} deciding · looked in ${lookMs}ms`);
 
       const content: Anthropic.Beta.BetaContentBlockParam[] = [];
       if (shot) content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: shot.toString("base64") } });
@@ -414,6 +431,7 @@ export async function runPersonaAgent(browser: Browser, cfg: AgentRunConfig): Pr
         return l;
       };
       const targetDesc = el ? `${el.tag} "${el.text}"` : decision.value;
+      console.log(`${tag} step ${i} ${decision.action}${targetDesc ? ` ${String(targetDesc).slice(0, 60)}` : ""} · decided in ${decideMs}ms`);
       let result = "ok";
       let error: string | null = null;
       try {

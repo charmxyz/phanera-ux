@@ -14,6 +14,7 @@ import { finishFromRecordedSteps } from "@/lib/agents/salvage";
 import { refundTestRun } from "@/lib/usage/usage";
 import { failInterruptedTest, forceStopTest, MAX_SALVAGE_ATTEMPTS, STOP_GRACE_MS } from "@/lib/agents/stop";
 import os from "node:os";
+import { readFileSync } from "node:fs";
 import type { DiscoveryStatus } from "@/types/database";
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS) || 3000;
@@ -151,15 +152,59 @@ async function tick() {
   }
 }
 
+// --- Diagnostics: tell "process died" (OOM, crash) apart from "process froze" in the Railway logs.
+
+/** Container memory from cgroups (what Railway's OOM killer counts), not the host-wide os.freemem(). */
+function containerMemory() {
+  const mb = (path: string) => {
+    try {
+      const v = readFileSync(path, "utf8").trim();
+      return v === "max" ? null : Math.round(Number(v) / 1024 / 1024);
+    } catch {
+      return null;
+    }
+  };
+  const used = mb("/sys/fs/cgroup/memory.current") ?? mb("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+  const limit = mb("/sys/fs/cgroup/memory.max") ?? mb("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+  return used == null ? "container mem n/a" : `container mem ${used}${limit ? ` of ${limit}` : ""} MB`;
+}
+
+function logHealth() {
+  const mb = (n: number) => Math.round(n / 1024 / 1024);
+  log(`health · running tests ${running.tests} · ${containerMemory()} · node rss ${mb(process.memoryUsage().rss)} MB · load ${os.loadavg()[0].toFixed(1)}`);
+}
+
+// If the event loop stalls, heartbeats stop and the test is salvaged as "worker stopped".
+// This line shows the stall happened (and how long) instead of leaving silence in the logs.
+let lastTick = Date.now();
+setInterval(() => {
+  const lag = Date.now() - lastTick - 1000;
+  if (lag > 2000) log(`event loop was blocked for ${lag}ms`);
+  lastTick = Date.now();
+}, 1000).unref();
+
+// One stray rejected promise would otherwise crash the process and every test running in it.
+process.on("unhandledRejection", (e) => log("unhandled rejection (kept running):", e instanceof Error ? e.stack : e));
+process.on("uncaughtException", (e) => {
+  log("FATAL uncaught exception:", e.stack ?? e);
+  logHealth();
+  process.exit(1);
+});
+process.on("exit", (code) => log(`exit code ${code} with ${running.tests} test(s) running`));
+
 async function main() {
   log(`up · tests ≤${MAX_TESTS} · discoveries ≤${MAX_DISCOVERIES} · personas/test ${process.env.PERSONA_CONCURRENCY ?? 3} · poll ${POLL_MS}ms`);
   let lastStaleCheck = 0;
+  let lastHealth = 0;
   while (!stopping) {
     try {
+      // Every 15s while tests run, so the last line before an OOM kill shows memory climbing.
+      if (Date.now() - lastHealth > (running.tests ? 15_000 : 60_000)) {
+        lastHealth = Date.now();
+        logHealth();
+      }
       if (Date.now() - lastStaleCheck > 60_000) {
         lastStaleCheck = Date.now();
-        const mb = (n: number) => Math.round(n / 1024 / 1024);
-        log(`health · running tests ${running.tests} · node rss ${mb(process.memoryUsage().rss)} MB · system free ${mb(os.freemem())} of ${mb(os.totalmem())} MB`);
         await failStaleJobs();
       }
       await tick();

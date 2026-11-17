@@ -118,7 +118,7 @@ APPENDIX
 - Task scripts, raw notes, recordings
 ```
 
-If you are still planning the sessions, pair this template with our list of [usability testing questions](/blog/usability-testing-questions) so the report has the evidence it needs.
+If you are still planning the sessions, pair this template with our list of [usability testing questions](/blog/usability-testing-questions) so the report has the evidence it needs. For the test plan, session script, note sheet and a summative report version, see our [usability testing template](/blog/usability-testing-template) kit.
 
 ## Reporting on AI usability tests
 

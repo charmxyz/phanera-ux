@@ -46,7 +46,7 @@ A simple table makes patterns obvious at a glance:
 | Sign up for a free account | 5 of 5 | 4 | None |
 | Invite a teammate | 2 of 5 | 9 | "Members" label not recognised |
 
-Completion rate is the most useful number in the report. Time on task and number of steps help too, but only next to what caused the delay.
+Completion rate is the most useful number in the report. Time on task and number of steps help too, but only next to what caused the delay. Our guide to [usability testing metrics](/blog/usability-testing-metrics) covers how to calculate each one and how many participants you need.
 
 ## How to write a finding
 
